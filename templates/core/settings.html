@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Configuración — {{ sys.store_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h4 class="mb-0">Configuración del Sistema</h4>
+    <small class="text-muted">Parámetros generales de la aplicación</small>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+{% csrf_token %}
+
+<!-- Datos de la tienda -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-shop me-2"></i>Datos de la Tienda</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">{{ form.store_name.label }}</label>
+                {{ form.store_name }}
+                <div class="form-text">Este nombre aparece en el sidebar y en las facturas.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">{{ form.store_logo.label }}</label>
+                {% if settings.store_logo %}
+                <div class="mb-2 d-flex align-items-center gap-3">
+                    <img src="{{ settings.store_logo.url }}" alt="Logo actual"
+                         style="max-height:50px;max-width:150px;object-fit:contain;border:1px solid #dee2e6;padding:4px;border-radius:4px;">
+                    <span class="text-muted small">Logo actual</span>
+                </div>
+                {% endif %}
+                {{ form.store_logo }}
+                <div class="form-text">PNG o JPG. Recomendado: fondo transparente.</div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold">{{ form.store_address.label }}</label>
+                {{ form.store_address }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">{{ form.store_phone.label }}</label>
+                {{ form.store_phone }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">{{ form.store_email.label }}</label>
+                {{ form.store_email }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Moneda e Impuesto + Vista previa -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-currency-dollar me-2"></i>Moneda e Impuestos</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">{{ form.currency_symbol.label }}</label>
+                        {{ form.currency_symbol }}
+                        <div class="form-text">Ej: L, $, €, Q</div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">{{ form.currency_name.label }}</label>
+                        {{ form.currency_name }}
+                        <div class="form-text">Nombre completo de la moneda</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">{{ form.tax_name.label }}</label>
+                        {{ form.tax_name }}
+                        <div class="form-text">Ej: ISV, IGV, IVA</div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">{{ form.tax_rate.label }}</label>
+                        <div class="input-group">
+                            {{ form.tax_rate }}
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <div class="form-text">Porcentaje aplicado a cada venta</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-eye me-2"></i>Vista previa actual</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-3">
+                    <tr>
+                        <th class="text-muted" style="width:55%">Moneda</th>
+                        <td><span class="badge bg-primary fs-6">{{ settings.currency_symbol }}</span>
+                            <span class="ms-2">{{ settings.currency_name }}</span></td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Impuesto</th>
+                        <td><strong>{{ settings.tax_name }}</strong>
+                            <span class="badge bg-warning text-dark ms-2">{{ settings.tax_rate }}%</span></td>
+                    </tr>
+                </table>
+                <div class="p-3 bg-light rounded border">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Subtotal</span>
+                        <span>{{ settings.currency_symbol }} 100.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between small mb-1 text-muted">
+                        <span>{{ settings.tax_name }} ({{ settings.tax_rate }}%)</span>
+                        <span>{{ settings.currency_symbol }} {{ settings.tax_rate }}.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1">
+                        <span>TOTAL</span>
+                        <span class="text-primary">
+                            {{ settings.currency_symbol }}
+                            {% widthratio settings.tax_rate 100 100 as tax_p %}{{ tax_p|add:100 }}.00
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuración de Factura -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-receipt me-2"></i>Configuración de Factura Impresa</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">{{ form.invoice_header.label }}</label>
+                {{ form.invoice_header }}
+                <div class="form-text">Texto adicional bajo el logo/nombre en la parte superior.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">{{ form.invoice_footer.label }}</label>
+                {{ form.invoice_footer }}
+                <div class="form-text">Mensaje final, ej: "Gracias por su compra."</div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch mt-1">
+                    {{ form.invoice_show_logo }}
+                    <label class="form-check-label ms-2" for="{{ form.invoice_show_logo.id_for_label }}">
+                        {{ form.invoice_show_logo.label }}
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch mt-1">
+                    {{ form.invoice_show_tax_detail }}
+                    <label class="form-check-label ms-2" for="{{ form.invoice_show_tax_detail.id_for_label }}">
+                        {{ form.invoice_show_tax_detail.label }}
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <hr class="mt-4">
+        <h6 class="mb-3">Vista previa de factura</h6>
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="border rounded p-3 bg-white shadow-sm" style="font-size:0.83rem;">
+                    <div class="text-center mb-2">
+                        {% if settings.store_logo and settings.invoice_show_logo %}
+                        <img src="{{ settings.store_logo.url }}" alt="logo"
+                             style="max-height:48px;max-width:120px;object-fit:contain;" class="mb-1 d-block mx-auto">
+                        {% endif %}
+                        {% if settings.invoice_header %}
+                        <p class="text-muted mb-1" style="font-size:0.76rem;">{{ settings.invoice_header }}</p>
+                        {% endif %}
+                        <strong class="d-block">{{ settings.store_name }}</strong>
+                        {% if settings.store_address %}<span class="text-muted">{{ settings.store_address }}</span><br>{% endif %}
+                        {% if settings.store_phone %}<span class="text-muted">Tel: {{ settings.store_phone }}</span>{% endif %}
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between mb-1"><span class="text-muted">N° Factura</span><code>VTA-SB1-20260420-0001</code></div>
+                    <div class="d-flex justify-content-between mb-1"><span class="text-muted">Cliente</span><span>Consumidor final</span></div>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Fecha</span><span>20/04/2026</span></div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between mb-2"><span>Producto ejemplo × 2</span><span>{{ settings.currency_symbol }} 100.00</span></div>
+                    <hr class="my-1">
+                    <div class="d-flex justify-content-between text-muted small"><span>Subtotal</span><span>{{ settings.currency_symbol }} 100.00</span></div>
+                    {% if settings.invoice_show_tax_detail %}
+                    <div class="d-flex justify-content-between text-muted small">
+                        <span>{{ settings.tax_name }} ({{ settings.tax_rate }}%)</span>
+                        <span>{{ settings.currency_symbol }} {{ settings.tax_rate }}.00</span>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1">
+                        <span>TOTAL</span>
+                        <span class="text-primary">
+                            {{ settings.currency_symbol }}
+                            {% widthratio settings.tax_rate 100 100 as tax_p %}{{ tax_p|add:100 }}.00
+                        </span>
+                    </div>
+                    {% if settings.invoice_footer %}
+                    <hr class="my-2">
+                    <p class="text-center text-muted mb-0" style="font-size:0.76rem;">{{ settings.invoice_footer }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if form.errors %}
+<div class="alert alert-danger">
+    {% for field in form %}{% for error in field.errors %}
+    <div><strong>{{ field.label }}:</strong> {{ error }}</div>
+    {% endfor %}{% endfor %}
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-end mb-4">
+    <button type="submit" class="btn btn-primary btn-lg px-5">
+        <i class="bi bi-floppy me-2"></i>Guardar cambios
+    </button>
+</div>
+</form>
+
+<div class="card border-info mb-4">
+    <div class="card-body">
+        <h6 class="text-info"><i class="bi bi-info-circle me-1"></i>Información</h6>
+        <p class="small text-muted mb-0">
+            Los cambios de moneda e impuesto aplican únicamente a nuevas ventas.
+            Las ventas ya registradas conservan el impuesto con el que fueron creadas.
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Ventas — SalesTrack{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-0">Historial de Ventas</h4>
+        <small class="text-muted">{{ page_obj.paginator.count }} ventas</small>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 flex-wrap align-items-end">
+            {% if request.user.is_superadmin %}
+            {{ form.branch }}
+            {% endif %}
+            {{ form.date_from }}
+            {{ form.date_to }}
+            {{ form.status }}
+            <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+            <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>N° Factura</th>
+                        {% if request.user.is_superadmin %}<th>Sucursal</th>{% endif %}
+                        <th>Cliente</th>
+                        <th>Vendedor</th>
+                        <th class="text-end">Total</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in page_obj %}
+                    <tr>
+                        <td><code>{{ sale.invoice_number }}</code></td>
+                        {% if request.user.is_superadmin %}<td>{{ sale.branch.name }}</td>{% endif %}
+                        <td>{{ sale.customer.name|default:"Sin cliente" }}</td>
+                        <td>{{ sale.seller.get_full_name|default:sale.seller.username }}</td>
+                        <td class="text-end fw-semibold">{{ sys.currency_symbol }} {{ sale.total }}</td>
+                        <td>
+                            <span class="badge
+                                {% if sale.status == 'completada' %}bg-success
+                                {% elif sale.status == 'cancelada' %}bg-danger
+                                {% else %}bg-warning text-dark{% endif %}">
+                                {{ sale.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ sale.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <a href="{% url 'sales:sale_detail' sale.pk %}"
+                               class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if sale.status == 'completada' and not request.user.is_cashier %}
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="cancelSale({{ sale.pk }}, '{{ sale.invoice_number }}')">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">No se encontraron ventas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer">
+        <nav><ul class="pagination pagination-sm mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">«</a></li>
+            {% endif %}
+            <li class="page-item active"><a class="page-link" href="#">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</a></li>
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a></li>
+            {% endif %}
+        </ul></nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cancelSale(pk, invoice) {
+    if(!confirm(`¿Anular la venta ${invoice}? Esta acción revertirá el stock.`)) return;
+    postJSON(`/sales/${pk}/cancel/`, {}).then(res=>{
+        if(res.success){ showToast('Venta anulada.','success'); location.reload(); }
+        else showToast(res.message||'Error.','danger');
+    });
+}
+</script>
+{% endblock %}

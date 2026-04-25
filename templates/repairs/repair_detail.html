@@ -1,0 +1,474 @@
+{% extends 'base.html' %}
+{% block title %}{{ repair.repair_number }} — {{ sys.store_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <h4 class="mb-0">{{ repair.repair_number }}</h4>
+        <small class="text-muted">Orden de reparación</small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-printer me-1"></i>Imprimir comprobante
+        </button>
+        {% if not repair.sale_id and repair.final_cost > 0 %}
+        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#chargeModal">
+            <i class="bi bi-cash-coin me-1"></i>Cobrar
+        </button>
+        {% endif %}
+        {% if repair.sale_id %}
+        <a href="{% url 'sales:sale_detail' repair.sale_id %}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-receipt me-1"></i>Ver venta {{ repair.sale.invoice_number }}
+        </a>
+        {% endif %}
+        {% if repair.is_editable %}
+        <a href="{% url 'repairs:repair_update' repair.pk %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Editar
+        </a>
+        {% endif %}
+        <a href="{% url 'repairs:repair_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Volver
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Left: Info + status -->
+    <div class="col-md-5">
+
+        <!-- Status card -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">Estado actual</h6>
+                    <span class="badge bg-{{ repair.status_color }} fs-6">{{ repair.get_status_display }}</span>
+                </div>
+
+                {% if repair.is_editable %}
+                <form id="statusForm">
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Cambiar estado</label>
+                        <select class="form-select form-select-sm" id="newStatus">
+                            {% for val, label in repair.STATUS_CHOICES %}
+                            <option value="{{ val }}" {% if val == repair.status %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <input type="text" class="form-control form-control-sm" id="statusComment"
+                               placeholder="Comentario (opcional)">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Costo final ({{ sys.currency_symbol }})</label>
+                        <input type="number" class="form-control form-control-sm" id="finalCost"
+                               value="{{ repair.final_cost }}" step="0.01" min="0">
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm w-100" onclick="updateStatus()">
+                        <i class="bi bi-check-lg me-1"></i>Actualizar estado
+                    </button>
+                </form>
+                {% endif %}
+
+                <hr>
+                <div class="small">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Ingresado</span>
+                        <span>{{ repair.received_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    {% if repair.estimated_delivery %}
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Entrega estimada</span>
+                        <span>{{ repair.estimated_delivery|date:"d/m/Y" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if repair.repaired_at %}
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Reparado</span>
+                        <span class="text-success fw-semibold">{{ repair.repaired_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if repair.delivered_at %}
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Entregado</span>
+                        <span class="text-secondary fw-semibold">{{ repair.delivered_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Recibido por</span>
+                        <span>{{ repair.received_by.get_full_name|default:repair.received_by.username|default:"—" }}</span>
+                    </div>
+                    {% if repair.technician %}
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Técnico</span>
+                        <span>{{ repair.technician.get_full_name|default:repair.technician.username }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Costs -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="mb-3">Costos</h6>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted small">Estimado</span>
+                    <span>{{ sys.currency_symbol }} {{ repair.estimated_cost }}</span>
+                </div>
+                <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1">
+                    <span>Final</span>
+                    <span class="text-primary">{{ sys.currency_symbol }} {{ repair.final_cost }}</span>
+                </div>
+            </div>
+        </div>
+
+        {% if repair.comments %}
+        <div class="card shadow-sm border-warning">
+            <div class="card-body">
+                <h6 class="text-warning mb-2"><i class="bi bi-sticky me-1"></i>Comentarios internos</h6>
+                <p class="small mb-0" style="white-space:pre-wrap;">{{ repair.comments }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right: Comprobante imprimible (screen preview) -->
+    <div class="col-md-7">
+        <div class="card shadow-sm no-print" id="printTicket">
+            <div class="card-body">
+                <!-- Header -->
+                <div class="text-center mb-3">
+                    {% if sys.store_logo and sys.invoice_show_logo %}
+                    <img src="{{ sys.store_logo.url }}" alt="logo"
+                         style="max-height:50px;max-width:150px;object-fit:contain;" class="mb-2 d-block mx-auto">
+                    {% endif %}
+                    <h5 class="fw-bold mb-0">{{ sys.store_name }}</h5>
+                    {% if sys.store_address %}<p class="small text-muted mb-0">{{ sys.store_address }}</p>{% endif %}
+                    {% if sys.store_phone %}<p class="small text-muted mb-0">Tel: {{ sys.store_phone }}</p>{% endif %}
+                    {% if sys.store_email %}<p class="small text-muted mb-0">{{ sys.store_email }}</p>{% endif %}
+                </div>
+
+                <div class="text-center mb-3">
+                    <div class="border rounded d-inline-block px-4 py-2 bg-light">
+                        <div class="text-muted small">ORDEN DE REPARACIÓN</div>
+                        <div class="fw-bold fs-5">{{ repair.repair_number }}</div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Cliente -->
+                <h6 class="text-primary mb-2">Datos del Cliente</h6>
+                <table class="table table-sm table-borderless mb-3">
+                    <tr><th style="width:35%">Nombre</th><td>{{ repair.customer_name }}</td></tr>
+                    {% if repair.customer_phone %}
+                    <tr><th>Teléfono</th><td>{{ repair.customer_phone }}</td></tr>
+                    {% endif %}
+                </table>
+
+                <!-- Equipo -->
+                <h6 class="text-primary mb-2">Datos del Equipo</h6>
+                <table class="table table-sm table-borderless mb-3">
+                    <tr><th style="width:35%">Marca</th><td>{{ repair.brand }}</td></tr>
+                    <tr><th>Modelo</th><td>{{ repair.model }}</td></tr>
+                    {% if repair.imei %}
+                    <tr><th>IMEI / Serie</th><td><code>{{ repair.imei }}</code></td></tr>
+                    {% endif %}
+                    {% if repair.color %}
+                    <tr><th>Color</th><td>{{ repair.color }}</td></tr>
+                    {% endif %}
+                </table>
+
+                <!-- Diagnóstico -->
+                <h6 class="text-primary mb-2">Diagnóstico / Falla reportada</h6>
+                <div class="border rounded p-2 bg-light mb-3 small">{{ repair.diagnosis }}</div>
+
+                <!-- Costos -->
+                <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-3">
+                    <span class="fw-semibold">Costo estimado</span>
+                    <span class="fw-bold text-primary fs-5">{{ sys.currency_symbol }} {{ repair.estimated_cost }}</span>
+                </div>
+
+                <!-- Fechas -->
+                <table class="table table-sm table-borderless mb-3">
+                    <tr>
+                        <th style="width:45%">Fecha de ingreso</th>
+                        <td>{{ repair.received_at|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% if repair.estimated_delivery %}
+                    <tr>
+                        <th>Entrega estimada</th>
+                        <td><strong>{{ repair.estimated_delivery|date:"d/m/Y" }}</strong></td>
+                    </tr>
+                    {% endif %}
+                    {% if repair.technician %}
+                    <tr>
+                        <th>Técnico</th>
+                        <td>{{ repair.technician.get_full_name|default:repair.technician.username }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th>Estado</th>
+                        <td><strong>{{ repair.get_status_display }}</strong></td>
+                    </tr>
+                </table>
+
+                {% if sys.invoice_footer %}
+                <hr>
+                <p class="text-center text-muted small mb-0">{{ sys.invoice_footer }}</p>
+                {% endif %}
+
+                <p class="text-center text-muted mt-2 mb-0" style="font-size:0.75rem;">
+                    Al retirar su equipo debe presentar este comprobante.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Thermal ticket — hidden on screen, shown on print -->
+<div class="thermal-ticket">
+
+    {% if sys.store_logo and sys.invoice_show_logo %}
+    <img src="{{ sys.store_logo.url }}" alt="logo">
+    {% endif %}
+    <p class="t-center t-bold t-lg" style="margin:0;">{{ sys.store_name }}</p>
+    {% if sys.store_address %}<p class="t-center t-sm" style="margin:0;">{{ sys.store_address }}</p>{% endif %}
+    {% if sys.store_phone %}<p class="t-center t-sm" style="margin:0;">Tel: {{ sys.store_phone }}</p>{% endif %}
+    {% if sys.store_email %}<p class="t-center t-sm" style="margin:0;">{{ sys.store_email }}</p>{% endif %}
+
+    <hr class="t-sep-sol">
+
+    <p class="t-center t-sm" style="margin:0;">ORDEN DE REPARACIÓN</p>
+    <p class="t-center t-xl" style="margin:0 0 1mm;">{{ repair.repair_number }}</p>
+    <div class="t-row t-sm"><span>Estado:</span><span class="t-bold">{{ repair.get_status_display }}</span></div>
+    <div class="t-row t-sm"><span>Ingreso:</span><span>{{ repair.received_at|date:"d/m/Y H:i" }}</span></div>
+    {% if repair.estimated_delivery %}
+    <div class="t-row t-sm"><span>Entrega est.:</span><span class="t-bold">{{ repair.estimated_delivery|date:"d/m/Y" }}</span></div>
+    {% endif %}
+    {% if repair.technician %}
+    <div class="t-row t-sm"><span>Técnico:</span><span>{{ repair.technician.get_full_name|default:repair.technician.username }}</span></div>
+    {% endif %}
+
+    <hr class="t-sep">
+
+    <p class="t-bold t-sm" style="margin:0 0 1mm;">CLIENTE</p>
+    <div class="t-row t-sm"><span>Nombre:</span><span>{{ repair.customer_name }}</span></div>
+    {% if repair.customer_phone %}
+    <div class="t-row t-sm"><span>Teléfono:</span><span>{{ repair.customer_phone }}</span></div>
+    {% endif %}
+
+    <hr class="t-sep">
+
+    <p class="t-bold t-sm" style="margin:0 0 1mm;">EQUIPO</p>
+    <div class="t-row t-sm"><span>Marca:</span><span>{{ repair.brand }}</span></div>
+    <div class="t-row t-sm"><span>Modelo:</span><span>{{ repair.model }}</span></div>
+    {% if repair.imei %}
+    <div class="t-row t-sm"><span>IMEI/Serie:</span><span>{{ repair.imei }}</span></div>
+    {% endif %}
+    {% if repair.color %}
+    <div class="t-row t-sm"><span>Color:</span><span>{{ repair.color }}</span></div>
+    {% endif %}
+
+    <hr class="t-sep">
+
+    <p class="t-bold t-sm" style="margin:0 0 1mm;">FALLA REPORTADA</p>
+    <p class="t-sm" style="margin:0;white-space:pre-wrap;">{{ repair.diagnosis }}</p>
+
+    <hr class="t-sep">
+
+    <div class="t-row t-sm"><span>Costo estimado:</span><span>{{ sys.currency_symbol }} {{ repair.estimated_cost }}</span></div>
+    {% if repair.final_cost > 0 %}
+    <hr class="t-sep-sol">
+    <div class="t-row t-bold" style="font-size:10pt;">
+        <span>TOTAL:</span><span>{{ sys.currency_symbol }} {{ repair.final_cost }}</span>
+    </div>
+    <hr class="t-sep-sol">
+    {% endif %}
+
+    {% if sys.invoice_footer %}
+    <hr class="t-sep">
+    <p class="t-center t-sm" style="margin:0;">{{ sys.invoice_footer }}</p>
+    {% endif %}
+
+    <hr class="t-sep">
+    <p class="t-center t-sm" style="margin:0;">Al retirar su equipo presente este comprobante.</p>
+
+</div>
+
+<!-- Cobrar Modal -->
+{% if not repair.sale_id and repair.final_cost > 0 %}
+<div class="modal fade" id="chargeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Cobrar Reparación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Resumen -->
+                <div class="bg-light rounded p-3 mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Servicio</span>
+                        <span id="chargeSubtotal">{{ sys.currency_symbol }} {{ repair.final_cost }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">{{ sys.tax_name }} ({{ sys.tax_rate }}%)</span>
+                        <span id="chargeTax">—</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-top pt-2 mt-1">
+                        <span class="fw-bold">Total a cobrar</span>
+                        <span class="fw-bold text-primary fs-5" id="chargeTotal">—</span>
+                    </div>
+                </div>
+
+                <!-- Método de pago -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Método de pago</label>
+                    <select class="form-select" id="chargeMethod" onchange="toggleChargeRef()">
+                        <option value="efectivo">Efectivo</option>
+                        <option value="tarjeta">Tarjeta</option>
+                        <option value="transferencia">Transferencia Bancaria</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Monto recibido</label>
+                    <div class="input-group">
+                        <span class="input-group-text">{{ sys.currency_symbol }}</span>
+                        <input type="number" class="form-control" id="chargeAmountPaid"
+                               step="0.01" min="0" placeholder="0.00" oninput="updateChargeCambio()">
+                    </div>
+                </div>
+
+                <!-- Cambio -->
+                <div id="chargeCambioBox" class="p-2 rounded mb-3"
+                     style="background:#f0fdf4;border:1px solid #bbf7d0;display:none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold text-success small">Cambio</span>
+                        <strong class="text-success" id="chargeCambio">{{ sys.currency_symbol }} 0.00</strong>
+                    </div>
+                </div>
+
+                <!-- Referencia (tarjeta / transferencia) -->
+                <div class="mb-0" id="chargeRefBox" style="display:none;">
+                    <label class="form-label fw-semibold">Referencia / N° transacción</label>
+                    <input type="text" class="form-control" id="chargeReference" placeholder="Opcional">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success px-4" onclick="submitCharge()">
+                    <i class="bi bi-check-lg me-1"></i>Confirmar cobro
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CURRENCY = "{{ sys.currency_symbol }}";
+const TAX_RATE = parseFloat("{{ sys.tax_rate }}") / 100;
+const FINAL_COST = parseFloat("{{ repair.final_cost }}") || 0;
+const CHARGE_URL = "{% url 'repairs:repair_charge' repair.pk %}";
+
+// Pre-calculate charge totals on page load
+document.addEventListener('DOMContentLoaded', function () {
+    const tax = FINAL_COST * TAX_RATE;
+    const total = FINAL_COST + tax;
+    document.getElementById('chargeTax') && (document.getElementById('chargeTax').textContent = `${CURRENCY} ${tax.toFixed(2)}`);
+    document.getElementById('chargeTotal') && (document.getElementById('chargeTotal').textContent = `${CURRENCY} ${total.toFixed(2)}`);
+});
+
+function toggleChargeRef() {
+    const method = document.getElementById('chargeMethod').value;
+    const refBox = document.getElementById('chargeRefBox');
+    const cambioBox = document.getElementById('chargeCambioBox');
+    if (refBox) refBox.style.display = (method !== 'efectivo') ? 'block' : 'none';
+    if (cambioBox && method !== 'efectivo') cambioBox.style.display = 'none';
+    updateChargeCambio();
+}
+
+function updateChargeCambio() {
+    const method = document.getElementById('chargeMethod').value;
+    const tax = FINAL_COST * TAX_RATE;
+    const total = FINAL_COST + tax;
+    const paid = parseFloat(document.getElementById('chargeAmountPaid').value) || 0;
+    const cambio = paid - total;
+    const cambioBox = document.getElementById('chargeCambioBox');
+    const cambioEl = document.getElementById('chargeCambio');
+    if (method === 'efectivo' && paid > 0 && cambio >= 0) {
+        cambioEl.textContent = `${CURRENCY} ${cambio.toFixed(2)}`;
+        cambioBox.style.display = 'block';
+    } else {
+        cambioBox.style.display = 'none';
+    }
+}
+
+function submitCharge() {
+    const method = document.getElementById('chargeMethod').value;
+    const amountPaid = parseFloat(document.getElementById('chargeAmountPaid').value) || 0;
+    const reference = document.getElementById('chargeReference')?.value || '';
+    const tax = FINAL_COST * TAX_RATE;
+    const total = FINAL_COST + tax;
+
+    if (method === 'efectivo' && amountPaid < total) {
+        showToast('El monto recibido es menor al total.', 'danger');
+        return;
+    }
+    if (amountPaid <= 0) {
+        showToast('Ingresa el monto recibido.', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    formData.append('payment_method', method);
+    formData.append('amount_paid', amountPaid);
+    formData.append('reference', reference);
+
+    fetch(CHARGE_URL, { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                showToast(`Cobro registrado — ${res.invoice_number}`, 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showToast(res.message || 'Error al registrar cobro.', 'danger');
+            }
+        })
+        .catch(() => showToast('Error de conexión.', 'danger'));
+}
+
+function updateStatus() {
+    const status = document.getElementById('newStatus').value;
+    const comment = document.getElementById('statusComment').value;
+    const finalCost = document.getElementById('finalCost').value;
+
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    formData.append('status', status);
+    formData.append('comments', comment);
+    formData.append('final_cost', finalCost);
+
+    fetch('{% url "repairs:repair_update_status" repair.pk %}', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            showToast(`Estado actualizado: ${res.label}`, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(res.message || 'Error al actualizar.', 'danger');
+        }
+    })
+    .catch(() => showToast('Error de conexión.', 'danger'));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,403 @@
+:root {
+    --primary: #1a2942;
+    --primary-light: #243554;
+    --sidebar-width: 240px;
+    --topbar-height: 60px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f0f2f5;
+    margin: 0;
+}
+
+/* ── SIDEBAR ─────────────────────────────────── */
+.sidebar {
+    width: var(--sidebar-width);
+    min-height: 100vh;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1050;
+    transition: transform 0.25s ease, width 0.25s ease;
+    overflow-x: hidden;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 20px 16px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-brand i { font-size: 1.4rem; flex-shrink: 0; }
+
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.user-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+
+.role-badge {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-superadmin { background: #dc3545; color: #fff; }
+.badge-admin { background: #ffc107; color: #212529; }
+.badge-cashier { background: #6c757d; color: #fff; }
+
+.sidebar-nav {
+    list-style: none;
+    padding: 10px 0;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.sidebar-nav .nav-item a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 20px;
+    color: rgba(255,255,255,0.75);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.sidebar-nav .nav-item a:hover,
+.sidebar-nav .nav-item.active a {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+}
+
+.sidebar-nav .nav-item.active a {
+    border-left: 3px solid #4d9fff;
+}
+
+.sidebar-nav .nav-item a i { font-size: 1.1rem; min-width: 20px; flex-shrink: 0; }
+
+/* Sidebar collapsed (desktop) */
+#wrapper.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+}
+#wrapper.sidebar-collapsed #page-content {
+    margin-left: 0;
+    width: 100%;
+}
+
+/* Sidebar overlay (mobile) */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1040;
+}
+.sidebar-overlay.active { display: block; }
+
+/* ── PAGE CONTENT ────────────────────────────── */
+#page-content {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: calc(100% - var(--sidebar-width));
+    transition: margin-left 0.25s ease, width 0.25s ease;
+}
+
+/* ── TOPBAR ──────────────────────────────────── */
+.topbar {
+    height: var(--topbar-height);
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.topbar-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.branch-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.notif-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    background: #dc3545;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.notif-dropdown { min-width: 280px; max-height: 350px; overflow-y: auto; }
+
+/* ── MAIN CONTENT ────────────────────────────── */
+.main-content {
+    padding: 20px 24px;
+    flex: 1;
+}
+
+.page-header {
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.page-header h4 { font-weight: 700; color: var(--primary); }
+
+/* ── KPI CARDS ───────────────────────────────── */
+.kpi-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: 100%;
+}
+
+.kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+}
+
+.bg-primary-soft  { background: #e8f0fe; }
+.bg-success-soft  { background: #e6f4ea; }
+.bg-warning-soft  { background: #fef9e7; }
+.bg-danger-soft   { background: #fde8e8; }
+
+.kpi-value {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.1;
+    word-break: break-all;
+}
+
+.kpi-label {
+    font-size: 0.77rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* ── CARDS ───────────────────────────────────── */
+.card {
+    border: none;
+    border-radius: 12px;
+}
+
+.card-header {
+    background: #fff;
+    border-bottom: 1px solid #f3f4f6;
+    padding: 13px 18px;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* ── TABLES ──────────────────────────────────── */
+.table th {
+    font-size: 0.77rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #6b7280;
+}
+
+.table td { vertical-align: middle; font-size: 0.875rem; }
+
+/* ── LOGIN PAGE ──────────────────────────────── */
+.login-page {
+    background: linear-gradient(135deg, var(--primary) 0%, #2c4a7e 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-container { width: 100%; max-width: 420px; padding: 20px; }
+
+.login-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+    overflow: hidden;
+}
+
+.login-header {
+    background: var(--primary);
+    color: #fff;
+    text-align: center;
+    padding: 32px 24px 24px;
+}
+
+.login-body { padding: 28px 32px 32px; }
+
+/* ── SEARCH DROPDOWN ─────────────────────────── */
+.search-dropdown {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 9999;
+    max-height: 300px;
+    overflow-y: auto;
+    min-width: 280px;
+    width: 100%;
+}
+
+.search-result-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.875rem;
+    transition: background 0.1s;
+}
+
+.search-result-item:hover { background: #f0f4ff; }
+.search-result-item:last-child { border-bottom: none; }
+
+/* ── POS ─────────────────────────────────────── */
+.cart-qty-input {
+    width: 70px;
+    text-align: center;
+    padding: 4px 6px;
+}
+
+/* ── RESPONSIVE — MOBILE ─────────────────────── */
+@media (max-width: 991.98px) {
+    /* On tablet/mobile the sidebar is off-screen by default */
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    #page-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    /* Undo desktop collapse when on mobile (it's always "collapsed") */
+    #wrapper.sidebar-collapsed .sidebar {
+        transform: translateX(-100%);
+    }
+    #wrapper.sidebar-collapsed #page-content {
+        margin-left: 0;
+        width: 100%;
+    }
+    .main-content { padding: 12px; }
+    .kpi-value { font-size: 1.2rem; }
+    .branch-label { display: none; }
+    .topbar { padding: 0 12px; }
+}
+
+@media (min-width: 992px) {
+    /* Overlay never shown on desktop */
+    .sidebar-overlay { display: none !important; }
+}
+
+/* ── THERMAL TICKET (screen preview hidden) ──── */
+.thermal-ticket { display: none; }
+
+/* ── PRINT — Thermal 80mm ────────────────────── */
+@media print {
+    @page {
+        size: 80mm auto;
+        margin: 0;
+    }
+
+    /* Hide everything (no-print elements stay hidden) */
+    .no-print { display: none !important; }
+    body * { visibility: hidden !important; }
+
+    /* Show only the thermal ticket */
+    .thermal-ticket,
+    .thermal-ticket * { visibility: visible !important; }
+
+    .thermal-ticket {
+        display: block !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 80mm;
+        padding: 3mm 4mm;
+        background: #fff;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 8pt;
+        color: #000;
+        line-height: 1.35;
+    }
+
+    /* Internal thermal styles */
+    .thermal-ticket .t-center   { text-align: center; }
+    .thermal-ticket .t-right    { text-align: right; }
+    .thermal-ticket .t-bold     { font-weight: bold; }
+    .thermal-ticket .t-sm       { font-size: 7pt; }
+    .thermal-ticket .t-lg       { font-size: 11pt; font-weight: bold; }
+    .thermal-ticket .t-xl       { font-size: 13pt; font-weight: bold; }
+    .thermal-ticket .t-sep      { border: none; border-top: 1px dashed #000; margin: 2mm 0; }
+    .thermal-ticket .t-sep-sol  { border: none; border-top: 1px solid #000; margin: 2mm 0; }
+    .thermal-ticket .t-row      { display: flex; justify-content: space-between; }
+    .thermal-ticket .t-row-3    { display: grid; grid-template-columns: 1fr auto auto; gap: 1mm; }
+    .thermal-ticket img         { max-width: 28mm; max-height: 14mm; object-fit: contain; display: block; margin: 0 auto 1mm; }
+    .thermal-ticket table       { width: 100%; border-collapse: collapse; font-size: 8pt; }
+    .thermal-ticket table td,
+    .thermal-ticket table th    { padding: 0.5mm 0; vertical-align: top; }
+    .thermal-ticket .t-item-name { white-space: normal; word-break: break-word; }
+    .thermal-ticket .t-num      { text-align: right; white-space: nowrap; }
+}

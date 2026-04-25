@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard — SalesTrack{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-0">Dashboard</h4>
+        <small class="text-muted">Resumen general del sistema</small>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4" id="kpiCards">
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-primary-soft"><i class="bi bi-cart-check text-primary"></i></div>
+            <div class="kpi-value" id="kpiSalesToday">—</div>
+            <div class="kpi-label">Ventas hoy</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-success-soft"><i class="bi bi-currency-dollar text-success"></i></div>
+            <div class="kpi-value" id="kpiRevenueToday">—</div>
+            <div class="kpi-label">Ingresos hoy</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-warning-soft"><i class="bi bi-calendar-month text-warning"></i></div>
+            <div class="kpi-value" id="kpiMonthlyRevenue">—</div>
+            <div class="kpi-label">Ingresos del mes</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-danger-soft"><i class="bi bi-exclamation-triangle text-danger"></i></div>
+            <div class="kpi-value" id="kpiLowStock">—</div>
+            <div class="kpi-label">Stock crítico</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Ventas — Últimos 7 días</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="chartSales7Days" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Ingresos mensuales</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="chartMonthly" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Row -->
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Últimas ventas</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Factura</th>
+                                {% if request.user.is_superadmin %}<th>Sucursal</th>{% endif %}
+                                <th>Cliente</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentSalesBody">
+                            <tr><td colspan="6" class="text-center text-muted py-3">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if request.user.is_superadmin %}
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-building me-2"></i>Resumen por sucursal</h6>
+            </div>
+            <div class="card-body p-0" id="branchSummaryContainer">
+                <div class="text-center text-muted py-3">Cargando...</div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Alertas de stock</h6>
+            </div>
+            <div class="card-body p-0" id="lowStockAlerts">
+                <div class="text-center text-muted py-3">Cargando...</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.CURRENCY_SYMBOL = "{{ sys.currency_symbol }}";
+    window.IS_SUPERADMIN = {{ request.user.is_superadmin|yesno:"true,false" }};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/dashboard.js' %}?v=3"></script>
+{% endblock %}

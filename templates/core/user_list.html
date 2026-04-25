@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios — SalesTrack{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-0">Usuarios</h4>
+        <small class="text-muted">Gestión de usuarios del sistema</small>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal">
+        <i class="bi bi-person-plus me-1"></i>Nuevo usuario
+    </button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Usuario</th><th>Nombre</th><th>Rol</th><th>Sucursal</th><th>Estado</th><th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in page_obj %}
+                    <tr>
+                        <td><code>{{ user.username }}</code></td>
+                        <td>{{ user.get_full_name|default:"—" }}</td>
+                        <td>
+                            <span class="badge
+                                {% if user.role == 'superadmin' %}bg-danger
+                                {% elif user.role == 'branch_admin' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}">
+                                {{ user.get_role_display }}
+                            </span>
+                        </td>
+                        <td>{{ user.branch.name|default:"Global" }}</td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge bg-success">Activo</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editUser({{ user.pk }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No hay usuarios.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="userForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="userId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Username *</label>
+                            <input type="text" class="form-control" id="uUsername" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Rol *</label>
+                            <select class="form-select" id="uRole">
+                                <option value="superadmin">Superadmin</option>
+                                <option value="branch_admin">Admin Sucursal</option>
+                                <option value="cashier" selected>Cajero</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="uFirstName">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Apellido</label>
+                            <input type="text" class="form-control" id="uLastName">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="uEmail">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Sucursal</label>
+                            <select class="form-select" id="uBranch">
+                                <option value="">— Ninguna —</option>
+                                {% for branch in all_branches %}
+                                <option value="{{ branch.pk }}">{{ branch.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <input type="password" class="form-control" id="uPassword1" placeholder="Dejar vacío para no cambiar">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Confirmar contraseña</label>
+                            <input type="password" class="form-control" id="uPassword2">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editUser(pk) {
+    fetch(`/users/${pk}/update/`).then(r=>r.json()).then(res=>{
+        if(res.success){
+            document.getElementById('userId').value = res.data.id;
+            document.getElementById('uUsername').value = res.data.username;
+            document.getElementById('uFirstName').value = res.data.first_name;
+            document.getElementById('uLastName').value = res.data.last_name;
+            document.getElementById('uEmail').value = res.data.email;
+            document.getElementById('uRole').value = res.data.role;
+            document.getElementById('uBranch').value = res.data.branch || '';
+            new bootstrap.Modal(document.getElementById('userModal')).show();
+        }
+    });
+}
+document.getElementById('userForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const pk = document.getElementById('userId').value;
+    const url = pk ? `/users/${pk}/update/` : `{% url 'core:user_create' %}`;
+    const body = {
+        username: document.getElementById('uUsername').value,
+        first_name: document.getElementById('uFirstName').value,
+        last_name: document.getElementById('uLastName').value,
+        email: document.getElementById('uEmail').value,
+        role: document.getElementById('uRole').value,
+        branch: document.getElementById('uBranch').value,
+        password1: document.getElementById('uPassword1').value,
+        password2: document.getElementById('uPassword2').value,
+    };
+    postForm(url, body).then(res=>{
+        if(res.success){
+            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+            showToast('Usuario guardado.','success');
+            location.reload();
+        } else showToast('Error al guardar: ' + JSON.stringify(res.errors), 'danger');
+    });
+});
+</script>
+{% endblock %}

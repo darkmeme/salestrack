@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Reportes — SalesTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h4 class="mb-0">Reportes</h4>
+    <small class="text-muted">Análisis y estadísticas</small>
+</div>
+
+<ul class="nav nav-tabs mb-4" id="reportTabs">
+    <li class="nav-item"><a class="nav-link active" href="#" data-tab="sales">Ventas</a></li>
+    {% if request.user.is_superadmin %}
+    <li class="nav-item"><a class="nav-link" href="#" data-tab="comparison">Comparativo</a></li>
+    {% endif %}
+    <li class="nav-item"><a class="nav-link" href="#" data-tab="inventory">Inventario</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-tab="top_products">Top Productos</a></li>
+</ul>
+
+<!-- Filters -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body py-2">
+        <div class="d-flex gap-2 flex-wrap align-items-end">
+            {% if request.user.is_superadmin %}
+            <div>
+                <label class="form-label small mb-1">Sucursal</label>
+                <select id="rBranch" class="form-select form-select-sm" style="min-width:170px;">
+                    <option value="">Todas</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.pk }}">{{ branch.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div>
+                <label class="form-label small mb-1">Desde</label>
+                <input type="date" id="rDateFrom" class="form-control form-control-sm">
+            </div>
+            <div>
+                <label class="form-label small mb-1">Hasta</label>
+                <input type="date" id="rDateTo" class="form-control form-control-sm">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="loadReport()">
+                <i class="bi bi-search me-1"></i>Generar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="exportReport()">
+                <i class="bi bi-download me-1"></i>CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Report Content -->
+<div id="reportContent">
+    <!-- Sales Report -->
+    <div id="salesReport" class="report-panel">
+        <div class="row g-3 mb-4" id="salesKpis">
+            <div class="col-md-3">
+                <div class="kpi-card"><div class="kpi-value" id="rTotalSales">—</div><div class="kpi-label">Total ventas</div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card"><div class="kpi-value" id="rTotalRevenue">—</div><div class="kpi-label">Ingresos totales</div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card"><div class="kpi-value" id="rTotalTax">—</div><div class="kpi-label">IGV total</div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card"><div class="kpi-value" id="rTotalDiscount">—</div><div class="kpi-label">Descuentos totales</div></div>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Factura</th><th>Sucursal</th><th>Cliente</th>
+                                <th>Vendedor</th><th class="text-end">Subtotal</th>
+                                <th class="text-end">IGV</th><th class="text-end">Total</th><th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesReportBody">
+                            <tr><td colspan="8" class="text-center text-muted py-4">Configura los filtros y presiona Generar.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison -->
+    {% if request.user.is_superadmin %}
+    <div id="comparisonReport" class="report-panel d-none">
+        <div class="card shadow-sm">
+            <div class="card-header"><h6 class="mb-0">Comparativo por Sucursal</h6></div>
+            <div class="card-body">
+                <canvas id="comparisonChart" height="100"></canvas>
+            </div>
+        </div>
+        <div class="card shadow-sm mt-3">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light"><tr><th>Sucursal</th><th class="text-center">Ventas</th><th class="text-end">Ingresos</th></tr></thead>
+                    <tbody id="comparisonBody">
+                        <tr><td colspan="3" class="text-center text-muted py-4">Presiona Generar.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Inventory -->
+    <div id="inventoryReport" class="report-panel d-none">
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height:500px; overflow-y:auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Sucursal</th><th>SKU</th><th>Producto</th><th>Categoría</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-end">Costo U.</th>
+                                <th class="text-end">Precio U.</th>
+                                <th class="text-end">Valor Costo</th>
+                                <th class="text-end">Valor Venta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryReportBody">
+                            <tr><td colspan="9" class="text-center text-muted py-4">Presiona Generar.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Products -->
+    <div id="topProductsReport" class="report-panel d-none">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header"><h6 class="mb-0">Top 10 Productos Más Vendidos</h6></div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light"><tr><th>#</th><th>Producto</th><th class="text-center">Unidades</th><th class="text-end">Ingresos</th></tr></thead>
+                            <tbody id="topProductsBody">
+                                <tr><td colspan="4" class="text-center text-muted py-4">Presiona Generar.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <canvas id="topProductsChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+const CURRENCY = "{{ sys.currency_symbol }}";
+let activeTab = 'sales';
+let comparisonChart = null;
+let topChart = null;
+
+document.querySelectorAll('[data-tab]').forEach(el=>{
+    el.addEventListener('click', function(e){
+        e.preventDefault();
+        document.querySelectorAll('[data-tab]').forEach(t=>t.classList.remove('active'));
+        this.classList.add('active');
+        activeTab = this.dataset.tab;
+        document.querySelectorAll('.report-panel').forEach(p=>p.classList.add('d-none'));
+        document.getElementById(`${activeTab}Report`).classList.remove('d-none');
+    });
+});
+
+function getFilters() {
+    return {
+        branch: document.getElementById('rBranch')?.value || '',
+        date_from: document.getElementById('rDateFrom').value,
+        date_to: document.getElementById('rDateTo').value,
+    };
+}
+
+function buildQuery(filters) {
+    return new URLSearchParams(Object.fromEntries(Object.entries(filters).filter(([,v])=>v))).toString();
+}
+
+function loadReport() {
+    const f = getFilters();
+    const q = buildQuery(f);
+    if(activeTab === 'sales') loadSalesReport(q);
+    else if(activeTab === 'comparison') loadComparison(q);
+    else if(activeTab === 'inventory') loadInventory(q);
+    else if(activeTab === 'top_products') loadTopProducts(q);
+}
+
+function loadSalesReport(q) {
+    fetch(`/reports/sales/?${q}`).then(r=>r.json()).then(res=>{
+        if(!res.success) return;
+        const d = res.data;
+        document.getElementById('rTotalSales').textContent = d.totals.count;
+        document.getElementById('rTotalRevenue').textContent = `${CURRENCY} ${d.totals.revenue.toFixed(2)}`;
+        document.getElementById('rTotalTax').textContent = `${CURRENCY} ${d.totals.tax.toFixed(2)}`;
+        document.getElementById('rTotalDiscount').textContent = `${CURRENCY} ${d.totals.discount.toFixed(2)}`;
+        const tbody = document.getElementById('salesReportBody');
+        tbody.innerHTML = d.sales.map(s=>`<tr>
+            <td><code>${s.invoice_number}</code></td>
+            <td>${s.branch}</td><td>${s.customer}</td><td>${s.seller}</td>
+            <td class="text-end">${CURRENCY} ${s.subtotal.toFixed(2)}</td>
+            <td class="text-end">${CURRENCY} ${s.tax.toFixed(2)}</td>
+            <td class="text-end fw-semibold">${CURRENCY} ${s.total.toFixed(2)}</td>
+            <td>${s.date}</td>
+        </tr>`).join('') || '<tr><td colspan="8" class="text-center text-muted">Sin resultados</td></tr>';
+    });
+}
+
+function loadComparison(q) {
+    fetch(`/reports/branch-comparison/?${q}`).then(r=>r.json()).then(res=>{
+        if(!res.success) return;
+        const tbody = document.getElementById('comparisonBody');
+        tbody.innerHTML = res.data.map(b=>`<tr>
+            <td><strong>${b.branch}</strong></td>
+            <td class="text-center">${b.sales_count}</td>
+            <td class="text-end fw-semibold">${CURRENCY} ${b.revenue.toFixed(2)}</td>
+        </tr>`).join('');
+        if(comparisonChart) comparisonChart.destroy();
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        comparisonChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: res.data.map(b=>b.branch),
+                datasets: [{
+                    label: 'Ingresos', data: res.data.map(b=>b.revenue),
+                    backgroundColor: '#1a294299', borderColor: '#1a2942', borderWidth: 2
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    });
+}
+
+function loadInventory(q) {
+    fetch(`/reports/inventory/?${q}`).then(r=>r.json()).then(res=>{
+        if(!res.success) return;
+        const tbody = document.getElementById('inventoryReportBody');
+        tbody.innerHTML = res.data.map(i=>`<tr>
+            <td>${i.branch}</td><td><code>${i.sku}</code></td>
+            <td>${i.product}</td><td>${i.category}</td>
+            <td class="text-center">${i.quantity}</td>
+            <td class="text-end">${CURRENCY} ${i.cost.toFixed(2)}</td>
+            <td class="text-end">${CURRENCY} ${i.price.toFixed(2)}</td>
+            <td class="text-end">${CURRENCY} ${i.cost_value.toFixed(2)}</td>
+            <td class="text-end fw-semibold">${CURRENCY} ${i.sale_value.toFixed(2)}</td>
+        </tr>`).join('') || '<tr><td colspan="9" class="text-center text-muted">Sin datos</td></tr>';
+    });
+}
+
+function loadTopProducts(q) {
+    fetch(`/reports/top-products/?${q}`).then(r=>r.json()).then(res=>{
+        if(!res.success) return;
+        const tbody = document.getElementById('topProductsBody');
+        tbody.innerHTML = res.data.map((p,i)=>`<tr>
+            <td><strong>${i+1}</strong></td><td>${p.name}</td>
+            <td class="text-center">${p.total_qty}</td>
+            <td class="text-end">${CURRENCY} ${p.total_revenue.toFixed(2)}</td>
+        </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted">Sin datos</td></tr>';
+        if(topChart) topChart.destroy();
+        const ctx = document.getElementById('topProductsChart').getContext('2d');
+        topChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: res.data.map(p=>p.name),
+                datasets: [{ data: res.data.map(p=>p.total_qty) }]
+            },
+            options: { responsive: true }
+        });
+    });
+}
+
+function exportReport() {
+    const f = getFilters();
+    const q = buildQuery(f);
+    if(activeTab === 'sales') window.location = `/reports/sales/csv/?${q}`;
+    else if(activeTab === 'inventory') window.location = `/reports/inventory/csv/?${q}`;
+}
+</script>
+{% endblock %}

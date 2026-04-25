@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Reparaciones — {{ sys.store_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-tools me-2"></i>Reparaciones</h4>
+        <small class="text-muted">Panel de control de órdenes de servicio</small>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'repairs:repair_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-list-ul me-1"></i>Ver todas
+        </a>
+        <a href="{% url 'repairs:repair_create' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Nueva orden
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 flex-wrap align-items-end">
+            {{ filter_form.date_from }}
+            {{ filter_form.date_to }}
+            {% if request.user.is_superadmin %}{{ filter_form.technician }}{% endif %}
+            <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+            <a href="{% url 'repairs:dashboard' %}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+        </form>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg">
+        <div class="kpi-card border-start border-4 border-warning">
+            <div class="kpi-icon bg-warning-soft"><i class="bi bi-hourglass-split text-warning"></i></div>
+            <div class="kpi-value">{{ stats.pendiente }}</div>
+            <div class="kpi-label">Pendientes</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="kpi-card border-start border-4 border-primary">
+            <div class="kpi-icon bg-primary-soft"><i class="bi bi-wrench text-primary"></i></div>
+            <div class="kpi-value">{{ stats.en_reparacion }}</div>
+            <div class="kpi-label">En reparación</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="kpi-card border-start border-4 border-success">
+            <div class="kpi-icon bg-success-soft"><i class="bi bi-check-circle text-success"></i></div>
+            <div class="kpi-value">{{ stats.reparado }}</div>
+            <div class="kpi-label">Reparados</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="kpi-card border-start border-4 border-secondary">
+            <div class="kpi-icon" style="background:#f0f0f0"><i class="bi bi-box-arrow-right text-secondary"></i></div>
+            <div class="kpi-value">{{ stats.entregado }}</div>
+            <div class="kpi-label">Entregados</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="kpi-card border-start border-4 border-dark">
+            <div class="kpi-icon" style="background:#e8e8e8"><i class="bi bi-clipboard-data"></i></div>
+            <div class="kpi-value">{{ stats.total }}</div>
+            <div class="kpi-label">Total en período</div>
+        </div>
+    </div>
+</div>
+
+<!-- Órdenes recientes -->
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Órdenes recientes</h6>
+        <a href="{% url 'repairs:repair_list' %}" class="btn btn-link btn-sm p-0">Ver todas →</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>N° Orden</th>
+                        <th>Cliente</th>
+                        <th>Equipo</th>
+                        <th>Técnico</th>
+                        {% if request.user.is_superadmin %}<th>Sucursal</th>{% endif %}
+                        <th>Estado</th>
+                        <th>Ingreso</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recent %}
+                    <tr>
+                        <td><code class="small">{{ r.repair_number }}</code></td>
+                        <td>
+                            <div class="fw-semibold small">{{ r.customer_name }}</div>
+                            {% if r.customer_phone %}<small class="text-muted">{{ r.customer_phone }}</small>{% endif %}
+                        </td>
+                        <td>
+                            <div class="small fw-semibold">{{ r.brand }} {{ r.model }}</div>
+                            {% if r.imei %}<small class="text-muted">{{ r.imei }}</small>{% endif %}
+                        </td>
+                        <td class="small">{{ r.technician.get_full_name|default:r.technician.username|default:"—" }}</td>
+                        {% if request.user.is_superadmin %}<td class="small">{{ r.branch.name|default:"—" }}</td>{% endif %}
+                        <td>
+                            <span class="badge bg-{{ r.status_color }}">{{ r.get_status_display }}</span>
+                        </td>
+                        <td class="small text-muted">{{ r.received_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <a href="{% url 'repairs:repair_detail' r.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">No hay órdenes en este período.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} — {{ sys.store_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-0">{{ title }}</h4>
+    </div>
+    <a href="{% url 'repairs:repair_list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+</div>
+
+<form method="post">
+{% csrf_token %}
+<div class="row g-3">
+
+    <!-- Datos del cliente -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-person me-2"></i>Datos del Cliente</h6>
+            </div>
+            <div class="card-body">
+
+                <!-- Customer search -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Buscar cliente existente</label>
+                    <div class="input-group">
+                        <input type="text" id="customerSearch" class="form-control"
+                               placeholder="Nombre, teléfono..." autocomplete="off"
+                               value="{% if repair.customer %}{{ repair.customer.name }}{% endif %}">
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearCustomer()" title="Limpiar">
+                            <i class="bi bi-x"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary"
+                                data-bs-toggle="modal" data-bs-target="#newCustomerModal" title="Nuevo cliente">
+                            <i class="bi bi-person-plus"></i>
+                        </button>
+                    </div>
+                    <input type="hidden" id="customerId" name="customer_id"
+                           value="{% if repair.customer_id %}{{ repair.customer_id }}{% endif %}">
+                    <div id="customerResults" class="search-dropdown"></div>
+                    <div class="form-text">Selecciona un cliente del listado o crea uno nuevo. También puedes ingresar los datos manualmente abajo.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ form.customer_name.label }} <span class="text-danger">*</span></label>
+                    {{ form.customer_name }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ form.customer_phone.label }}</label>
+                    {{ form.customer_phone }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Datos del equipo -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-phone me-2"></i>Datos del Equipo</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label fw-semibold">{{ form.brand.label }} <span class="text-danger">*</span></label>
+                        {{ form.brand }}
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label fw-semibold">{{ form.model.label }} <span class="text-danger">*</span></label>
+                        {{ form.model }}
+                    </div>
+                    <div class="col-md-8 mb-2">
+                        <label class="form-label fw-semibold">{{ form.imei.label }}</label>
+                        {{ form.imei }}
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label fw-semibold">{{ form.color.label }}</label>
+                        {{ form.color }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diagnóstico y reparación -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-clipboard-text me-2"></i>Diagnóstico</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ form.diagnosis.label }} <span class="text-danger">*</span></label>
+                    {{ form.diagnosis }}
+                    <div class="form-text">Describe la falla reportada por el cliente. Esto aparece en el comprobante.</div>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label fw-semibold">{{ form.comments.label }}</label>
+                    {{ form.comments }}
+                    <div class="form-text">Notas internas — no se muestran al cliente.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asignación y costo -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-person-gear me-2"></i>Asignación</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ form.technician.label }}</label>
+                    {{ form.technician }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ form.estimated_delivery.label }}</label>
+                    {{ form.estimated_delivery }}
+                </div>
+                <div class="mb-0">
+                    <label class="form-label fw-semibold">{{ form.estimated_cost.label }}</label>
+                    <div class="input-group">
+                        <span class="input-group-text">{{ sys.currency_symbol }}</span>
+                        {{ form.estimated_cost }}
+                    </div>
+                    <div class="form-text">Se muestra en el comprobante al cliente.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if form.errors %}
+    <div class="col-12">
+        <div class="alert alert-danger">
+            {% for field in form %}{% for error in field.errors %}
+            <div><strong>{{ field.label }}:</strong> {{ error }}</div>
+            {% endfor %}{% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="col-12 d-flex justify-content-end gap-2 mb-4">
+        <a href="{% url 'repairs:repair_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-floppy me-1"></i>Guardar
+        </button>
+    </div>
+</div>
+</form>
+
+<!-- New Customer Modal -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Nuevo Cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newCustomerForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                        <input type="text" id="newCustName" class="form-control" placeholder="Nombre completo">
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Teléfono</label>
+                            <input type="text" id="newCustPhone" class="form-control" placeholder="Ej: 9999-9999">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Correo electrónico</label>
+                            <input type="email" id="newCustEmail" class="form-control" placeholder="correo@ejemplo.com">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label fw-semibold">Dirección</label>
+                        <textarea id="newCustAddress" class="form-control" rows="2" placeholder="Dirección del cliente"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveRepairCustomer()">
+                    <i class="bi bi-floppy me-1"></i>Guardar cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let custSearchTimer = null;
+const custInput    = document.getElementById('customerSearch');
+const custResults  = document.getElementById('customerResults');
+const custIdField  = document.getElementById('customerId');
+const custNameField = document.getElementById('id_customer_name');
+const custPhoneField = document.getElementById('id_customer_phone');
+
+if (custInput) {
+    custInput.addEventListener('input', function () {
+        clearTimeout(custSearchTimer);
+        const q = this.value.trim();
+        if (!q) { hideCustomerResults(); return; }
+        custSearchTimer = setTimeout(() => searchRepairCustomers(q), 250);
+    });
+    document.addEventListener('click', function (e) {
+        if (!custInput.contains(e.target) && custResults && !custResults.contains(e.target)) {
+            hideCustomerResults();
+        }
+    });
+}
+
+function searchRepairCustomers(q) {
+    fetch(`/customers/search/?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(res => {
+            custResults.innerHTML = '';
+            if (!res.data || !res.data.length) {
+                custResults.innerHTML = '<div class="search-result-item text-muted small">Sin resultados</div>';
+            } else {
+                res.data.forEach(c => {
+                    const item = document.createElement('div');
+                    item.className = 'search-result-item';
+                    item.innerHTML = `<span class="fw-semibold">${c.name}</span>${c.phone ? ' <small class="text-muted">· ' + c.phone + '</small>' : ''}`;
+                    item.onclick = () => selectRepairCustomer(c);
+                    custResults.appendChild(item);
+                });
+            }
+            custResults.style.display = 'block';
+        });
+}
+
+function selectRepairCustomer(c) {
+    custIdField.value    = c.id;
+    custInput.value      = c.name;
+    if (custNameField)  custNameField.value  = c.name;
+    if (custPhoneField) custPhoneField.value = c.phone || '';
+    hideCustomerResults();
+}
+
+function clearCustomer() {
+    custIdField.value = '';
+    custInput.value   = '';
+    if (custNameField)  custNameField.value  = '';
+    if (custPhoneField) custPhoneField.value = '';
+    hideCustomerResults();
+}
+
+function hideCustomerResults() {
+    if (custResults) custResults.style.display = 'none';
+}
+
+function saveRepairCustomer() {
+    const name = document.getElementById('newCustName').value.trim();
+    if (!name) { alert('El nombre es requerido.'); return; }
+    const payload = {
+        name,
+        phone:   document.getElementById('newCustPhone').value.trim(),
+        email:   document.getElementById('newCustEmail').value.trim(),
+        address: document.getElementById('newCustAddress').value.trim(),
+    };
+    postJSON('/customers/create/', payload).then(res => {
+        if (res.success) {
+            selectRepairCustomer({ id: res.id, name: res.name, phone: payload.phone });
+            bootstrap.Modal.getInstance(document.getElementById('newCustomerModal')).hide();
+            document.getElementById('newCustomerForm').reset();
+            showToast(`Cliente "${res.name}" creado correctamente.`, 'success');
+        } else {
+            showToast(res.message || 'Error al crear cliente.', 'danger');
+        }
+    });
+}
+</script>
+{% endblock %}

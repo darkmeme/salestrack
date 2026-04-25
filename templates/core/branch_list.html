@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}Sucursales — SalesTrack{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-0">Sucursales</h4>
+        <small class="text-muted">Gestión de sucursales</small>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#branchModal" onclick="openBranchCreate()">
+        <i class="bi bi-plus-lg me-1"></i>Nueva sucursal
+    </button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Email</th>
+                        <th>Manager</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for branch in branches %}
+                    <tr>
+                        <td><code>{{ branch.code }}</code></td>
+                        <td class="fw-semibold">{{ branch.name }}</td>
+                        <td>{{ branch.phone|default:"—" }}</td>
+                        <td>{{ branch.email|default:"—" }}</td>
+                        <td>{{ branch.manager.get_full_name|default:"Sin asignar" }}</td>
+                        <td>
+                            {% if branch.is_active %}
+                            <span class="badge bg-success">Activa</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactiva</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1"
+                                    onclick="editBranch({{ branch.pk }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteBranch({{ branch.pk }}, '{{ branch.name }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted py-4">No hay sucursales registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Branch Modal -->
+<div class="modal fade" id="branchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="branchModalTitle">Nueva sucursal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="branchForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="branchId">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre *</label>
+                        <input type="text" class="form-control" id="branchName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Código *</label>
+                        <input type="text" class="form-control" id="branchCode" placeholder="SUC-001" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Dirección</label>
+                        <textarea class="form-control" id="branchAddress" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="branchPhone">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="branchEmail">
+                        </div>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="branchActive" checked>
+                        <label class="form-check-label">Sucursal activa</label>
+                    </div>
+                    <div id="branchFormErrors" class="alert alert-danger mt-2 d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const URLS = {
+    create: "{% url 'core:branch_create' %}",
+    update: (pk) => `/branches/${pk}/update/`,
+    delete: (pk) => `/branches/${pk}/delete/`,
+};
+
+function openBranchCreate() {
+    document.getElementById('branchModalTitle').textContent = 'Nueva sucursal';
+    document.getElementById('branchId').value = '';
+    document.getElementById('branchForm').reset();
+    document.getElementById('branchActive').checked = true;
+    document.getElementById('branchFormErrors').classList.add('d-none');
+}
+
+function editBranch(pk) {
+    fetch(URLS.update(pk)).then(r => r.json()).then(res => {
+        if (res.success) {
+            document.getElementById('branchModalTitle').textContent = 'Editar sucursal';
+            document.getElementById('branchId').value = res.data.id;
+            document.getElementById('branchName').value = res.data.name;
+            document.getElementById('branchCode').value = res.data.code;
+            document.getElementById('branchAddress').value = res.data.address;
+            document.getElementById('branchPhone').value = res.data.phone;
+            document.getElementById('branchEmail').value = res.data.email;
+            document.getElementById('branchActive').checked = res.data.is_active;
+            new bootstrap.Modal(document.getElementById('branchModal')).show();
+        }
+    });
+}
+
+function deleteBranch(pk, name) {
+    if (!confirm(`¿Desactivar la sucursal "${name}"?`)) return;
+    postJSON(URLS.delete(pk), {}).then(res => {
+        if (res.success) { showToast('Sucursal desactivada.', 'success'); location.reload(); }
+        else showToast(res.message || 'Error', 'danger');
+    });
+}
+
+document.getElementById('branchForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const pk = document.getElementById('branchId').value;
+    const url = pk ? URLS.update(pk) : URLS.create;
+    const body = {
+        name: document.getElementById('branchName').value,
+        code: document.getElementById('branchCode').value,
+        address: document.getElementById('branchAddress').value,
+        phone: document.getElementById('branchPhone').value,
+        email: document.getElementById('branchEmail').value,
+        is_active: document.getElementById('branchActive').checked,
+    };
+    postForm(url, body).then(res => {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('branchModal')).hide();
+            showToast('Sucursal guardada.', 'success');
+            location.reload();
+        } else {
+            const errDiv = document.getElementById('branchFormErrors');
+            errDiv.classList.remove('d-none');
+            errDiv.textContent = JSON.stringify(res.errors);
+        }
+    });
+});
+</script>
+{% endblock %}

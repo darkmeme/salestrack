@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}Transferencia {{ transfer.transfer_number }} — SalesTrack{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-0">{{ transfer.transfer_number }}</h4>
+        <small class="text-muted">Detalle de transferencia</small>
+    </div>
+    <a href="{% url 'inventory:transfer_list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">Información</h6>
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><th>N° Transferencia</th><td><code>{{ transfer.transfer_number }}</code></td></tr>
+                    <tr><th>Origen</th><td>{{ transfer.origin_branch.name }}</td></tr>
+                    <tr><th>Destino</th><td>{{ transfer.destination_branch.name }}</td></tr>
+                    <tr><th>Estado</th><td>
+                        <span class="badge
+                            {% if transfer.status == 'completada' %}bg-success
+                            {% elif transfer.status == 'en_transito' %}bg-primary
+                            {% elif transfer.status == 'cancelada' %}bg-danger
+                            {% else %}bg-warning text-dark{% endif %}">
+                            {{ transfer.get_status_display }}
+                        </span>
+                    </td></tr>
+                    <tr><th>Creado por</th><td>{{ transfer.created_by.get_full_name|default:transfer.created_by.username }}</td></tr>
+                    <tr><th>Fecha creación</th><td>{{ transfer.created_at|date:"d/m/Y H:i" }}</td></tr>
+                    {% if transfer.completed_at %}
+                    <tr><th>Completada</th><td>{{ transfer.completed_at|date:"d/m/Y H:i" }}</td></tr>
+                    {% endif %}
+                </table>
+                {% if transfer.notes %}
+                <hr>
+                <p class="small text-muted mb-0"><strong>Notas:</strong> {{ transfer.notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Productos</h6>
+                {% if transfer.status == 'en_transito' and request.user.can_access_branch %}
+                <button class="btn btn-success btn-sm" onclick="openCompleteModal()">
+                    <i class="bi bi-check-lg me-1"></i>Confirmar recepción
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Producto</th><th>SKU</th>
+                            <th class="text-center">Enviado</th>
+                            <th class="text-center">Recibido</th>
+                            <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in transfer.items.all %}
+                        <tr>
+                            <td class="fw-semibold">{{ item.product.name }}</td>
+                            <td><code>{{ item.product.sku }}</code></td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td class="text-center">
+                                {% if item.quantity_received is not None %}
+                                <span class="badge {% if item.quantity_received == item.quantity %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                    {{ item.quantity_received }}
+                                </span>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td class="small text-muted">{{ item.notes|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if transfer.status == 'en_transito' %}
+<div class="modal fade" id="completeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Recepción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Ingresa las cantidades realmente recibidas (pueden diferir de las enviadas).</p>
+                <table class="table table-sm">
+                    <thead class="table-light"><tr>
+                        <th>Producto</th><th class="text-center">Enviado</th><th>Cantidad recibida</th>
+                    </tr></thead>
+                    <tbody id="receiveItemsBody">
+                        {% for item in transfer.items.all %}
+                        <tr>
+                            <td>{{ item.product.name }}</td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm receive-qty"
+                                       data-item-id="{{ item.pk }}"
+                                       value="{{ item.quantity }}" min="0" max="{{ item.quantity }}">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="submitComplete()">
+                    <i class="bi bi-check-lg me-1"></i>Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openCompleteModal() {
+    new bootstrap.Modal(document.getElementById('completeModal')).show();
+}
+
+function submitComplete() {
+    const items = [];
+    document.querySelectorAll('.receive-qty').forEach(input=>{
+        items.push({
+            item_id: input.dataset.itemId,
+            quantity_received: parseInt(input.value),
+        });
+    });
+    postJSON('{% url "inventory:transfer_complete" transfer.pk %}', {items})
+        .then(res=>{
+            if(res.success){
+                showToast('Transferencia completada.','success');
+                setTimeout(()=>location.reload(),1000);
+            } else showToast(res.message||'Error.','danger');
+        });
+}
+</script>
+{% endblock %}
