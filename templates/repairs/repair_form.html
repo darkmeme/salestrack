@@ -47,6 +47,7 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold">{{ form.customer_name.label }} <span class="text-danger">*</span></label>
                     {{ form.customer_name }}
+                    {% if form.customer_name.errors %}<div class="invalid-feedback d-block">{{ form.customer_name.errors|join:", " }}</div>{% endif %}
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">{{ form.customer_phone.label }}</label>
@@ -67,10 +68,12 @@
                     <div class="col-md-6 mb-2">
                         <label class="form-label fw-semibold">{{ form.brand.label }} <span class="text-danger">*</span></label>
                         {{ form.brand }}
+                        {% if form.brand.errors %}<div class="invalid-feedback d-block">{{ form.brand.errors|join:", " }}</div>{% endif %}
                     </div>
                     <div class="col-md-6 mb-2">
                         <label class="form-label fw-semibold">{{ form.model.label }} <span class="text-danger">*</span></label>
                         {{ form.model }}
+                        {% if form.model.errors %}<div class="invalid-feedback d-block">{{ form.model.errors|join:", " }}</div>{% endif %}
                     </div>
                     <div class="col-md-8 mb-2">
                         <label class="form-label fw-semibold">{{ form.imei.label }}</label>
@@ -95,6 +98,7 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold">{{ form.diagnosis.label }} <span class="text-danger">*</span></label>
                     {{ form.diagnosis }}
+                    {% if form.diagnosis.errors %}<div class="invalid-feedback d-block">{{ form.diagnosis.errors|join:", " }}</div>{% endif %}
                     <div class="form-text">Describe la falla reportada por el cliente. Esto aparece en el comprobante.</div>
                 </div>
                 <div class="mb-0">
@@ -114,8 +118,11 @@
             </div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">{{ form.technician.label }}</label>
+                    <label class="form-label fw-semibold">{{ form.technician.label }} <span class="text-danger">*</span></label>
                     {{ form.technician }}
+                    {% if form.technician.errors %}
+                    <div class="invalid-feedback d-block">{{ form.technician.errors|join:", " }}</div>
+                    {% endif %}
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">{{ form.estimated_delivery.label }}</label>

@@ -48,7 +48,11 @@ class RepairForm(forms.ModelForm):
         if branch:
             qs = qs.filter(branch=branch)
         self.fields['technician'].queryset = qs
-        self.fields['technician'].empty_label = '— Sin asignar —'
+        self.fields['technician'].empty_label = '— Seleccione un técnico —'
+        self.fields['technician'].required = True
+        # Ensure these filter fields are explicitly required
+        for f in ('customer_name', 'brand', 'model', 'diagnosis'):
+            self.fields[f].required = True
 
 
 class RepairStatusForm(forms.ModelForm):
