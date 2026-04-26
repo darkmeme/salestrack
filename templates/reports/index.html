@@ -252,7 +252,9 @@ function loadInventory(q) {
     fetch(`/reports/inventory/?${q}`).then(r=>r.json()).then(res=>{
         if(!res.success) return;
         const tbody = document.getElementById('inventoryReportBody');
-        tbody.innerHTML = res.data.map(i=>`<tr>
+        const totalCost = res.data.reduce((a,i) => a + i.cost_value, 0);
+        const totalSale = res.data.reduce((a,i) => a + i.sale_value, 0);
+        const rows = res.data.map(i=>`<tr>
             <td>${i.branch}</td><td><code>${i.sku}</code></td>
             <td>${i.product}</td><td>${i.category}</td>
             <td class="text-center">${i.quantity}</td>
@@ -260,7 +262,14 @@ function loadInventory(q) {
             <td class="text-end">${CURRENCY} ${i.price.toFixed(2)}</td>
             <td class="text-end">${CURRENCY} ${i.cost_value.toFixed(2)}</td>
             <td class="text-end fw-semibold">${CURRENCY} ${i.sale_value.toFixed(2)}</td>
-        </tr>`).join('') || '<tr><td colspan="9" class="text-center text-muted">Sin datos</td></tr>';
+        </tr>`).join('');
+        const totalsRow = res.data.length ? `
+            <tr class="table-dark fw-bold">
+                <td colspan="7">TOTALES (${res.data.length} productos)</td>
+                <td class="text-end">${CURRENCY} ${totalCost.toFixed(2)}</td>
+                <td class="text-end">${CURRENCY} ${totalSale.toFixed(2)}</td>
+            </tr>` : '';
+        tbody.innerHTML = rows + totalsRow || '<tr><td colspan="9" class="text-center text-muted">Sin datos</td></tr>';
     });
 }
 

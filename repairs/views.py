@@ -41,6 +41,7 @@ def repair_dashboard(request):
         'en_reparacion': qs.filter(status='en_reparacion').count(),
         'reparado':      qs.filter(status='reparado').count(),
         'entregado':     qs.filter(status='entregado').count(),
+        'pagado':        qs.filter(status='pagado').count(),
         'total':         qs.count(),
     }
     recent = qs.order_by('-received_at')[:15]
@@ -250,7 +251,19 @@ def repair_charge(request, pk):
         tax = (subtotal * tax_rate).quantize(Decimal('0.01'))
         total = subtotal + tax
 
-        branch = repair.branch or user.branch
+        # Resolve branch: repair → session active_branch → user.branch
+        branch = repair.branch
+        if not branch:
+            if user.is_superadmin:
+                branch_id = request.session.get('active_branch_id')
+                if branch_id:
+                    from core.models import Branch as _Branch
+                    branch = _Branch.objects.filter(pk=branch_id, is_active=True).first()
+            else:
+                branch = user.branch
+        if not branch:
+            return JsonResponse({'success': False, 'message': 'No hay sucursal activa seleccionada.'})
+
         sale = Sale(
             branch=branch,
             customer=repair.customer,
@@ -274,7 +287,7 @@ def repair_charge(request, pk):
         )
 
         repair.sale = sale
-        repair.status = 'entregado'
+        repair.status = 'pagado'
         if not repair.delivered_at:
             repair.delivered_at = timezone.now()
         repair.save()
@@ -340,6 +353,19 @@ def technician_update(request, pk):
         'is_active': tech.is_active,
     }
     return JsonResponse({'success': True, 'data': data})
+
+
+@branch_admin_required
+def technician_delete(request, pk):
+    tech = get_object_or_404(Technician, pk=pk)
+    if not request.user.is_superadmin and tech.branch != request.user.branch:
+        return JsonResponse({'success': False, 'message': 'Sin permisos.'}, status=403)
+    if request.method == 'POST':
+        if tech.assigned_repairs.exists():
+            return JsonResponse({'success': False, 'message': 'No se puede eliminar: el técnico tiene reparaciones asignadas.'})
+        tech.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})
 
 
 @branch_admin_required

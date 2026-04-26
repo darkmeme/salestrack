@@ -96,7 +96,8 @@ def user_list(request):
     users = UserProfile.objects.select_related('branch').all()
     paginator = Paginator(users, 25)
     page = paginator.get_page(request.GET.get('page'))
-    return render(request, 'core/user_list.html', {'page_obj': page})
+    all_branches = Branch.objects.filter(is_active=True)
+    return render(request, 'core/user_list.html', {'page_obj': page, 'all_branches': all_branches})
 
 
 @superadmin_required
@@ -130,6 +131,18 @@ def user_update(request, pk):
     return JsonResponse({'success': True, 'data': data})
 
 
+@superadmin_required
+def user_delete(request, pk):
+    if request.method == 'POST':
+        user = get_object_or_404(UserProfile, pk=pk)
+        if user == request.user:
+            return JsonResponse({'success': False, 'message': 'No puedes eliminarte a ti mismo.'})
+        user.is_active = False
+        user.save()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})
+
+
 @login_required
 def customer_list(request):
     qs = Customer.objects.all()
@@ -147,7 +160,12 @@ def customer_list(request):
 @login_required
 def customer_create(request):
     if request.method == 'POST':
-        form = CustomerForm(request.POST)
+        import json as _json
+        try:
+            data = _json.loads(request.body)
+        except Exception:
+            data = request.POST
+        form = CustomerForm(data)
         if form.is_valid():
             customer = form.save()
             return JsonResponse({'success': True, 'id': customer.pk, 'name': customer.name})
@@ -170,6 +188,17 @@ def customer_update(request, pk):
         'address': customer.address,
     }
     return JsonResponse({'success': True, 'data': data})
+
+
+@branch_admin_required
+def customer_delete(request, pk):
+    if request.method == 'POST':
+        customer = get_object_or_404(Customer, pk=pk)
+        if customer.sales.exists():
+            return JsonResponse({'success': False, 'message': 'No se puede eliminar: el cliente tiene ventas asociadas.'})
+        customer.delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})
 
 
 @login_required

@@ -48,10 +48,13 @@
                             <button class="btn btn-sm btn-outline-primary me-1" onclick="openEdit({{ tech.pk }})">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-sm {% if tech.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                            <button class="btn btn-sm {% if tech.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %} me-1"
                                     onclick="toggleTech({{ tech.pk }}, this)"
                                     title="{% if tech.is_active %}Desactivar{% else %}Activar{% endif %}">
                                 <i class="bi {% if tech.is_active %}bi-toggle-on{% else %}bi-toggle-off{% endif %}"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTech({{ tech.pk }}, '{{ tech.name|escapejs }}')">
+                                <i class="bi bi-trash"></i>
                             </button>
                         </td>
                     </tr>
@@ -157,6 +160,15 @@ function openEdit(pk) {
             if (branchEl) branchEl.value = d.branch || '';
             document.getElementById('techErrors').classList.add('d-none');
             new bootstrap.Modal(document.getElementById('techModal')).show();
+        });
+}
+
+function deleteTech(pk, name) {
+    if (!confirm(`¿Eliminar al técnico "${name}"? Esta acción no se puede deshacer.`)) return;
+    fetch(`/repairs/technicians/${pk}/delete/`, {method: 'POST', headers: {'X-CSRFToken': CSRF}})
+        .then(r => r.json()).then(res => {
+            if (res.success) { showToast('Técnico eliminado.', 'success'); location.reload(); }
+            else showToast(res.message || 'Error al eliminar.', 'danger');
         });
 }
 

@@ -195,9 +195,9 @@ def recent_sales(request):
     sales = qs[:10]
     data = [{
         'invoice_number': s.invoice_number,
-        'branch': s.branch.name,
+        'branch': s.branch.name if s.branch else '—',
         'customer': s.customer.name if s.customer else 'Sin cliente',
-        'seller': s.seller.get_full_name() or s.seller.username if s.seller else '-',
+        'seller': (s.seller.get_full_name() or s.seller.username) if s.seller else '-',
         'total': float(s.total),
         'status': s.get_status_display(),
         'created_at': s.created_at.strftime('%d/%m/%Y %H:%M'),

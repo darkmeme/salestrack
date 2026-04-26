@@ -30,6 +30,7 @@ class Repair(models.Model):
         ('en_reparacion', 'En Reparación'),
         ('reparado', 'Reparado'),
         ('entregado', 'Entregado'),
+        ('pagado', 'Pagado'),
     ]
 
     STATUS_COLORS = {
@@ -37,6 +38,7 @@ class Repair(models.Model):
         'en_reparacion': 'primary',
         'reparado': 'success',
         'entregado': 'secondary',
+        'pagado': 'dark',
     }
 
     repair_number = models.CharField(max_length=30, unique=True, editable=False, verbose_name='N° Orden')
@@ -120,4 +122,4 @@ class Repair(models.Model):
 
     @property
     def is_editable(self):
-        return self.status not in ('entregado',)
+        return self.status not in ('entregado', 'pagado')

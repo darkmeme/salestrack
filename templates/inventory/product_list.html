@@ -77,8 +77,11 @@
                             <button class="btn btn-sm btn-outline-primary me-1" onclick="editProduct({{ product.pk }})">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-warning" onclick="adjustStock({{ product.pk }}, '{{ product.name|escapejs }}')">
+                            <button class="btn btn-sm btn-outline-warning me-1" onclick="adjustStock({{ product.pk }}, '{{ product.name|escapejs }}')">
                                 <i class="bi bi-boxes"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct({{ product.pk }}, '{{ product.name|escapejs }}')">
+                                <i class="bi bi-trash"></i>
                             </button>
                         </td>
                         {% endif %}
@@ -263,6 +266,14 @@ document.getElementById('productForm').addEventListener('submit', function(e){
         }
     });
 });
+
+function deleteProduct(pk, name) {
+    if (!confirm(`¿Desactivar el producto "${name}"? Ya no aparecerá en el inventario.`)) return;
+    postForm(`/inventory/products/${pk}/delete/`, {}).then(res => {
+        if (res.success) { showToast('Producto desactivado.', 'warning'); location.reload(); }
+        else showToast(res.message || 'Error al eliminar.', 'danger');
+    });
+}
 
 document.getElementById('stockForm').addEventListener('submit', function(e){
     e.preventDefault();

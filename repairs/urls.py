@@ -16,4 +16,5 @@ urlpatterns = [
     path('technicians/create/', views.technician_create, name='technician_create'),
     path('technicians/<int:pk>/update/', views.technician_update, name='technician_update'),
     path('technicians/<int:pk>/toggle/', views.technician_toggle, name='technician_toggle'),
+    path('technicians/<int:pk>/delete/', views.technician_delete, name='technician_delete'),
 ]

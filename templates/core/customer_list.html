@@ -39,10 +39,16 @@
                         <td>{{ customer.phone|default:"—" }}</td>
                         <td>{{ customer.created_at|date:"d/m/Y" }}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-primary"
+                            <button class="btn btn-sm btn-outline-primary me-1"
                                     onclick="editCustomer({{ customer.pk }})">
                                 <i class="bi bi-pencil"></i>
                             </button>
+                            {% if not request.user.is_cashier %}
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteCustomer({{ customer.pk }}, '{{ customer.name|escapejs }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -98,6 +104,17 @@
 
 {% block extra_js %}
 <script>
+const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+function deleteCustomer(pk, name) {
+    if (!confirm(`¿Eliminar al cliente "${name}"? Solo es posible si no tiene ventas.`)) return;
+    fetch(`/customers/${pk}/delete/`, {method: 'POST', headers: {'X-CSRFToken': CSRF}})
+        .then(r => r.json()).then(res => {
+            if (res.success) { showToast('Cliente eliminado.', 'success'); location.reload(); }
+            else showToast(res.message || 'Error al eliminar.', 'danger');
+        });
+}
+
 function openCustomerCreate() {
     document.getElementById('customerModalTitle').textContent = 'Nuevo cliente';
     document.getElementById('customerId').value = '';

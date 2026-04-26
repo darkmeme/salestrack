@@ -103,6 +103,18 @@ def product_update(request, pk):
 
 
 @login_required
+def product_delete(request, pk):
+    if request.user.is_cashier:
+        return JsonResponse({'success': False, 'message': 'Sin permisos'}, status=403)
+    if request.method == 'POST':
+        product = get_object_or_404(Product, pk=pk)
+        product.is_active = False
+        product.save()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})
+
+
+@login_required
 def stock_adjust(request, pk):
     if request.user.is_cashier:
         return JsonResponse({'success': False, 'message': 'Sin permisos'}, status=403)
