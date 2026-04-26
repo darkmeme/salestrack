@@ -17,7 +17,7 @@
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input type="text" id="productSearch" class="form-control"
-                           placeholder="Buscar producto por nombre o SKU..."
+                           placeholder="Buscar producto por nombre o SKU... (Enter para agregar)"
                            autocomplete="off">
                 </div>
                 <div id="searchResults" class="search-dropdown"></div>
@@ -33,10 +33,11 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Producto</th>
-                                <th style="width:100px">Cant.</th>
-                                <th style="width:130px">Precio</th>
-                                <th style="width:130px">Desc.</th>
-                                <th style="width:130px">Subtotal</th>
+                                <th style="width:90px">Cant.</th>
+                                <th style="width:80px" class="text-center">Stock</th>
+                                <th style="width:120px">Precio</th>
+                                <th style="width:110px">Desc.</th>
+                                <th style="width:110px">Subtotal</th>
                                 <th style="width:50px"></th>
                             </tr>
                         </thead>

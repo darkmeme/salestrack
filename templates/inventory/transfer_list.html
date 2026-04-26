@@ -120,7 +120,11 @@
                 <div class="row">
                     <div class="col-md-6">
                         <h6>Productos disponibles en origen</h6>
-                        <div class="table-responsive" style="max-height:300px; overflow-y:auto;">
+                        <div class="mb-2">
+                            <input type="text" id="trStockSearch" class="form-control form-control-sm"
+                                   placeholder="Buscar por nombre o SKU..." oninput="filterStockTable(this.value)">
+                        </div>
+                        <div class="table-responsive" style="max-height:280px; overflow-y:auto;">
                             <table class="table table-sm table-hover" id="stockTable">
                                 <thead class="table-light sticky-top"><tr>
                                     <th>Producto</th><th>Stock</th><th></th>
@@ -163,6 +167,14 @@
 <script>
 let transferItems = [];
 
+function filterStockTable(q) {
+    const rows = document.querySelectorAll('#stockTableBody tr[data-search]');
+    const term = q.toLowerCase();
+    rows.forEach(row => {
+        row.style.display = row.dataset.search.includes(term) ? '' : 'none';
+    });
+}
+
 function loadBranchStock() {
     const originId = document.getElementById('trOrigin').value;
     if (!originId) { showToast('Selecciona una sucursal origen.', 'warning'); return; }
@@ -174,10 +186,12 @@ function loadBranchStock() {
                 tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin stock disponible</td></tr>';
                 return;
             }
+            document.getElementById('trStockSearch').value = '';
             res.data.forEach(p=>{
                 const stock = p.stock_in_branch || 0;
                 if(stock <= 0) return;
                 const tr = document.createElement('tr');
+                tr.dataset.search = `${p.name} ${p.sku}`.toLowerCase();
                 tr.innerHTML = `<td>${p.name}<br><small class="text-muted">${p.sku}</small></td>
                     <td><span class="badge bg-success">${stock}</span></td>
                     <td><button class="btn btn-xs btn-outline-primary btn-sm"

@@ -11,7 +11,7 @@
         <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-printer me-1"></i>Imprimir comprobante
         </button>
-        {% if not repair.sale_id and repair.final_cost > 0 %}
+        {% if not repair.sale_id and repair.status != 'pagado' %}
         <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#chargeModal">
             <i class="bi bi-cash-coin me-1"></i>Cobrar
         </button>
@@ -298,7 +298,7 @@
 </div>
 
 <!-- Cobrar Modal -->
-{% if not repair.sale_id and repair.final_cost > 0 %}
+{% if not repair.sale_id and repair.status != 'pagado' %}
 <div class="modal fade" id="chargeModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -307,6 +307,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <!-- Costo final editable -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Costo del servicio ({{ sys.currency_symbol }})</label>
+                    <input type="number" class="form-control" id="chargeFinalCost"
+                           value="{{ repair.final_cost }}" step="0.01" min="0"
+                           oninput="recalcChargeTotal()">
+                </div>
                 <!-- Resumen -->
                 <div class="bg-light rounded p-3 mb-3">
                     <div class="d-flex justify-content-between mb-1">
@@ -373,15 +380,27 @@
 <script>
 const CURRENCY = "{{ sys.currency_symbol }}";
 const TAX_RATE = parseFloat("{{ sys.tax_rate }}") / 100;
-const FINAL_COST = parseFloat("{{ repair.final_cost }}") || 0;
 const CHARGE_URL = "{% url 'repairs:repair_charge' repair.pk %}";
 
-// Pre-calculate charge totals on page load
+function getChargeCost() {
+    return parseFloat(document.getElementById('chargeFinalCost')?.value) || 0;
+}
+
+function recalcChargeTotal() {
+    const cost = getChargeCost();
+    const tax = cost * TAX_RATE;
+    const total = cost + tax;
+    const subtotalEl = document.getElementById('chargeSubtotal');
+    const taxEl = document.getElementById('chargeTax');
+    const totalEl = document.getElementById('chargeTotal');
+    if (subtotalEl) subtotalEl.textContent = `${CURRENCY} ${cost.toFixed(2)}`;
+    if (taxEl) taxEl.textContent = `${CURRENCY} ${tax.toFixed(2)}`;
+    if (totalEl) totalEl.textContent = `${CURRENCY} ${total.toFixed(2)}`;
+    updateChargeCambio();
+}
+
 document.addEventListener('DOMContentLoaded', function () {
-    const tax = FINAL_COST * TAX_RATE;
-    const total = FINAL_COST + tax;
-    document.getElementById('chargeTax') && (document.getElementById('chargeTax').textContent = `${CURRENCY} ${tax.toFixed(2)}`);
-    document.getElementById('chargeTotal') && (document.getElementById('chargeTotal').textContent = `${CURRENCY} ${total.toFixed(2)}`);
+    recalcChargeTotal();
 });
 
 function toggleChargeRef() {
@@ -395,8 +414,9 @@ function toggleChargeRef() {
 
 function updateChargeCambio() {
     const method = document.getElementById('chargeMethod').value;
-    const tax = FINAL_COST * TAX_RATE;
-    const total = FINAL_COST + tax;
+    const cost = getChargeCost();
+    const tax = cost * TAX_RATE;
+    const total = cost + tax;
     const paid = parseFloat(document.getElementById('chargeAmountPaid').value) || 0;
     const cambio = paid - total;
     const cambioBox = document.getElementById('chargeCambioBox');
@@ -413,8 +433,10 @@ function submitCharge() {
     const method = document.getElementById('chargeMethod').value;
     const amountPaid = parseFloat(document.getElementById('chargeAmountPaid').value) || 0;
     const reference = document.getElementById('chargeReference')?.value || '';
-    const tax = FINAL_COST * TAX_RATE;
-    const total = FINAL_COST + tax;
+    const cost = getChargeCost();
+    const tax = cost * TAX_RATE;
+    const total = cost + tax;
+    if (cost <= 0) { showToast('Ingresa el costo del servicio.', 'warning'); return; }
 
     if (method === 'efectivo' && amountPaid < total) {
         showToast('El monto recibido es menor al total.', 'danger');
@@ -430,6 +452,7 @@ function submitCharge() {
     formData.append('payment_method', method);
     formData.append('amount_paid', amountPaid);
     formData.append('reference', reference);
+    formData.append('final_cost', cost);
 
     fetch(CHARGE_URL, { method: 'POST', body: formData })
         .then(r => r.json())

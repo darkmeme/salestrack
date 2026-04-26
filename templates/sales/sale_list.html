@@ -11,15 +11,35 @@
 
 <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="d-flex gap-2 flex-wrap align-items-end">
-            {% if request.user.is_superadmin %}
-            {{ form.branch }}
-            {% endif %}
-            {{ form.date_from }}
-            {{ form.date_to }}
-            {{ form.status }}
-            <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
-            <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+        <form method="get">
+            <div class="row g-2 align-items-end">
+                {% if request.user.is_superadmin %}
+                <div class="col-md-3 col-6">
+                    <label class="form-label small mb-1">Sucursal</label>
+                    {{ form.branch }}
+                </div>
+                {% endif %}
+                <div class="col-md-3 col-6">
+                    <label class="form-label small mb-1">Desde</label>
+                    {{ form.date_from }}
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label small mb-1">Hasta</label>
+                    {{ form.date_to }}
+                </div>
+                <div class="col-md-2 col-6">
+                    <label class="form-label small mb-1">Estado</label>
+                    {{ form.status }}
+                </div>
+                <div class="col-md-1 col-12 d-flex gap-1">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary btn-sm flex-fill">
+                        <i class="bi bi-x"></i>
+                    </a>
+                </div>
+            </div>
         </form>
     </div>
 </div>

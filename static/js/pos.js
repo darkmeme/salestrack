@@ -21,6 +21,15 @@ document.addEventListener('DOMContentLoaded', () => {
             searchTimer = setTimeout(() => searchProducts(q), 250);
         });
 
+        productInput.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const q = this.value.trim();
+            if (!q) return;
+            clearTimeout(searchTimer);
+            addFirstResult(q);
+        });
+
         document.addEventListener('click', (e) => {
             if (!productInput.contains(e.target)) hideDropdown(searchResults);
             if (customerInput && !customerInput.contains(e.target) &&
@@ -75,6 +84,24 @@ function searchProducts(q) {
                 });
             }
             results.style.display = 'block';
+        })
+        .catch(() => showToast('Error al buscar productos.', 'danger'));
+}
+
+function addFirstResult(q) {
+    const branchId = getBranchId();
+    if (!branchId) { showToast('Selecciona una sucursal primero.', 'warning'); return; }
+    fetch(`/sales/new/search-products/?branch=${branchId}&q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(res => {
+            if (!res.data || !res.data.length) {
+                showToast('Producto no encontrado.', 'warning');
+                return;
+            }
+            const exact = res.data.find(p => p.sku.toLowerCase() === q.toLowerCase()) || res.data[0];
+            addToCart(exact);
+            document.getElementById('productSearch').value = '';
+            hideDropdown(document.getElementById('searchResults'));
         })
         .catch(() => showToast('Error al buscar productos.', 'danger'));
 }
@@ -149,7 +176,10 @@ function renderCart() {
         return;
     }
 
-    tbody.innerHTML = cart.map((item, idx) => `
+    tbody.innerHTML = cart.map((item, idx) => {
+        const remaining = item.max_stock - item.quantity;
+        const stockClass = remaining <= 0 ? 'text-danger fw-bold' : remaining <= 3 ? 'text-warning fw-semibold' : 'text-success';
+        return `
         <tr>
             <td>
                 <div class="fw-semibold">${item.name}</div>
@@ -159,6 +189,9 @@ function renderCart() {
                 <input type="number" class="form-control form-control-sm cart-qty-input"
                        value="${item.quantity}" min="1" max="${item.max_stock}"
                        onchange="updateQty(${idx}, this.value)">
+            </td>
+            <td class="text-center">
+                <span class="${stockClass}" title="Stock restante">${remaining}</span>
             </td>
             <td>
                 <div class="input-group input-group-sm">
@@ -182,7 +215,7 @@ function renderCart() {
                     <i class="bi bi-x"></i>
                 </button>
             </td>
-        </tr>`).join('');
+        </tr>`; }).join('');
 
     recalculate();
 }

@@ -18,7 +18,10 @@ def login_view(request):
         return redirect('dashboard:index')
     form = LoginForm(request, data=request.POST or None)
     if request.method == 'POST' and form.is_valid():
-        login(request, form.get_user())
+        user = form.get_user()
+        login(request, user)
+        if user.branch_id:
+            request.session['active_branch_id'] = user.branch_id
         return redirect(request.GET.get('next', 'dashboard:index'))
     return render(request, 'core/login.html', {'form': form})
 

@@ -162,6 +162,10 @@
                             <label class="form-label">Descripción</label>
                             <textarea class="form-control" id="pDescription" rows="2"></textarea>
                         </div>
+                        <div class="col-md-6 mb-3" id="initialStockRow">
+                            <label class="form-label">Stock inicial <small class="text-muted">(solo al crear)</small></label>
+                            <input type="number" class="form-control" id="pInitialStock" value="0" min="0">
+                        </div>
                     </div>
                     <div id="productFormErrors" class="alert alert-danger d-none"></div>
                 </div>
@@ -215,6 +219,7 @@ function openProductCreate() {
     document.getElementById('productModalTitle').textContent = 'Nuevo producto';
     document.getElementById('productId').value = '';
     document.getElementById('productForm').reset();
+    document.getElementById('initialStockRow').style.display = '';
 }
 
 function editProduct(pk) {
@@ -229,6 +234,7 @@ function editProduct(pk) {
             document.getElementById('pCost').value = res.data.cost;
             document.getElementById('pMinStock').value = res.data.min_stock;
             document.getElementById('pDescription').value = res.data.description;
+            document.getElementById('initialStockRow').style.display = 'none';
             new bootstrap.Modal(document.getElementById('productModal')).show();
         }
     });
@@ -254,6 +260,7 @@ document.getElementById('productForm').addEventListener('submit', function(e){
         min_stock: document.getElementById('pMinStock').value,
         description: document.getElementById('pDescription').value,
         is_active: true,
+        initial_stock: document.getElementById('pInitialStock').value || 0,
     };
     postForm(url, body).then(res=>{
         if(res.success){
@@ -268,9 +275,9 @@ document.getElementById('productForm').addEventListener('submit', function(e){
 });
 
 function deleteProduct(pk, name) {
-    if (!confirm(`¿Desactivar el producto "${name}"? Ya no aparecerá en el inventario.`)) return;
+    if (!confirm(`¿Eliminar permanentemente el producto "${name}"?\n\nEsta acción no se puede deshacer. Si el producto tiene ventas históricas no podrá eliminarse.`)) return;
     postForm(`/inventory/products/${pk}/delete/`, {}).then(res => {
-        if (res.success) { showToast('Producto desactivado.', 'warning'); location.reload(); }
+        if (res.success) { showToast('Producto eliminado.', 'success'); location.reload(); }
         else showToast(res.message || 'Error al eliminar.', 'danger');
     });
 }

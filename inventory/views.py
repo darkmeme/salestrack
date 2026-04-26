@@ -75,7 +75,11 @@ def product_create(request):
             product = form.save()
             active_branch = _get_active_branch(request)
             if active_branch:
-                BranchStock.objects.get_or_create(product=product, branch=active_branch, defaults={'quantity': 0})
+                initial_stock = max(0, int(request.POST.get('initial_stock', 0) or 0))
+                BranchStock.objects.get_or_create(
+                    product=product, branch=active_branch,
+                    defaults={'quantity': initial_stock}
+                )
             return JsonResponse({'success': True, 'id': product.pk})
         return JsonResponse({'success': False, 'errors': form.errors})
     return JsonResponse({'success': False})
@@ -108,8 +112,13 @@ def product_delete(request, pk):
         return JsonResponse({'success': False, 'message': 'Sin permisos'}, status=403)
     if request.method == 'POST':
         product = get_object_or_404(Product, pk=pk)
-        product.is_active = False
-        product.save()
+        from sales.models import SaleItem
+        if SaleItem.objects.filter(product=product).exists():
+            return JsonResponse({
+                'success': False,
+                'message': f'No se puede eliminar "{product.name}": tiene ventas registradas. Puedes desactivarlo desde Editar.'
+            })
+        product.delete()
         return JsonResponse({'success': True})
     return JsonResponse({'success': False})
 

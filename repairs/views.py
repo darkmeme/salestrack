@@ -240,12 +240,20 @@ def repair_charge(request, pk):
         payment_method = request.POST.get('payment_method', 'efectivo')
         amount_paid = Decimal(request.POST.get('amount_paid', '0'))
         reference = request.POST.get('reference', '')
+        override_cost = request.POST.get('final_cost', '')
 
         from core.models import SystemSettings
         from sales.models import Sale, Payment
 
         cfg = SystemSettings.get()
         tax_rate = cfg.tax_rate / Decimal('100')
+
+        if override_cost:
+            try:
+                repair.final_cost = Decimal(override_cost)
+                repair.save(update_fields=['final_cost'])
+            except InvalidOperation:
+                pass
 
         subtotal = repair.final_cost
         tax = (subtotal * tax_rate).quantize(Decimal('0.01'))
