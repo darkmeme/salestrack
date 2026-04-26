@@ -102,7 +102,7 @@
                             <div class="small fw-semibold">{{ r.brand }} {{ r.model }}</div>
                             {% if r.imei %}<small class="text-muted">{{ r.imei }}</small>{% endif %}
                         </td>
-                        <td class="small">{{ r.technician.get_full_name|default:r.technician.username|default:"—" }}</td>
+                        <td class="small">{{ r.technician.name|default:"—" }}</td>
                         {% if request.user.is_superadmin %}<td class="small">{{ r.branch.name|default:"—" }}</td>{% endif %}
                         <td>
                             <span class="badge bg-{{ r.status_color }}">{{ r.get_status_display }}</span>
