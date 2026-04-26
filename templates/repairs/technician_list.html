@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% block title %}Técnicos — {{ sys.store_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-0">Técnicos</h4>
+        <small class="text-muted">{{ technicians.count }} registrados</small>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openCreate()">
+        <i class="bi bi-plus-lg me-1"></i>Nuevo técnico
+    </button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Correo</th>
+                        <th>Especialización</th>
+                        {% if request.user.is_superadmin %}<th>Sucursal</th>{% endif %}
+                        <th class="text-center">Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tech in technicians %}
+                    <tr>
+                        <td class="fw-semibold">{{ tech.name }}</td>
+                        <td>{{ tech.phone|default:"—" }}</td>
+                        <td>{{ tech.email|default:"—" }}</td>
+                        <td>{{ tech.specialization|default:"—" }}</td>
+                        {% if request.user.is_superadmin %}
+                        <td>{{ tech.branch.name|default:"—" }}</td>
+                        {% endif %}
+                        <td class="text-center">
+                            {% if tech.is_active %}
+                            <span class="badge bg-success">Activo</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="openEdit({{ tech.pk }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm {% if tech.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                                    onclick="toggleTech({{ tech.pk }}, this)"
+                                    title="{% if tech.is_active %}Desactivar{% else %}Activar{% endif %}">
+                                <i class="bi {% if tech.is_active %}bi-toggle-on{% else %}bi-toggle-off{% endif %}"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted py-4">No hay técnicos registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Technician Modal -->
+<div class="modal fade" id="techModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="techModalTitle">Nuevo técnico</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="techForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="techId">
+                    <div id="techErrors" class="alert alert-danger d-none"></div>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre completo *</label>
+                        <input type="text" class="form-control" id="tName" required placeholder="Nombre completo">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="tPhone" placeholder="9999-9999">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Correo</label>
+                            <input type="email" class="form-control" id="tEmail" placeholder="correo@ejemplo.com">
+                        </div>
+                    </div>
+                    {% if request.user.is_superadmin %}
+                    <div class="mb-3">
+                        <label class="form-label">Sucursal</label>
+                        <select class="form-select" id="tBranch">
+                            <option value="">— Sin sucursal —</option>
+                            {% for b in branches %}
+                            <option value="{{ b.pk }}">{{ b.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label">Especialización</label>
+                        <input type="text" class="form-control" id="tSpec" placeholder="Pantallas, baterías, placa...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notas</label>
+                        <textarea class="form-control" id="tNotes" rows="2"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="tActive" checked>
+                        <label class="form-check-label" for="tActive">Activo</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CREATE_URL = "{% url 'repairs:technician_create' %}";
+const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+function openCreate() {
+    document.getElementById('techModalTitle').textContent = 'Nuevo técnico';
+    document.getElementById('techId').value = '';
+    document.getElementById('techForm').reset();
+    document.getElementById('tActive').checked = true;
+    document.getElementById('techErrors').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('techModal')).show();
+}
+
+function openEdit(pk) {
+    fetch(`/repairs/technicians/${pk}/update/`)
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) return;
+            const d = res.data;
+            document.getElementById('techModalTitle').textContent = 'Editar técnico';
+            document.getElementById('techId').value = d.id;
+            document.getElementById('tName').value = d.name;
+            document.getElementById('tPhone').value = d.phone;
+            document.getElementById('tEmail').value = d.email;
+            document.getElementById('tSpec').value = d.specialization;
+            document.getElementById('tNotes').value = d.notes;
+            document.getElementById('tActive').checked = d.is_active;
+            const branchEl = document.getElementById('tBranch');
+            if (branchEl) branchEl.value = d.branch || '';
+            document.getElementById('techErrors').classList.add('d-none');
+            new bootstrap.Modal(document.getElementById('techModal')).show();
+        });
+}
+
+function toggleTech(pk, btn) {
+    fetch(`/repairs/technicians/${pk}/toggle/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF},
+    }).then(r => r.json()).then(res => {
+        if (res.success) location.reload();
+    });
+}
+
+document.getElementById('techForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const pk = document.getElementById('techId').value;
+    const url = pk ? `/repairs/technicians/${pk}/update/` : CREATE_URL;
+    const branchEl = document.getElementById('tBranch');
+    const body = new URLSearchParams({
+        csrfmiddlewaretoken: CSRF,
+        name: document.getElementById('tName').value,
+        phone: document.getElementById('tPhone').value,
+        email: document.getElementById('tEmail').value,
+        specialization: document.getElementById('tSpec').value,
+        notes: document.getElementById('tNotes').value,
+        is_active: document.getElementById('tActive').checked ? 'on' : '',
+    });
+    if (branchEl) body.append('branch', branchEl.value);
+
+    fetch(url, {method: 'POST', body})
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                bootstrap.Modal.getInstance(document.getElementById('techModal')).hide();
+                location.reload();
+            } else {
+                const errEl = document.getElementById('techErrors');
+                errEl.classList.remove('d-none');
+                const msgs = Object.values(res.errors || {}).flat();
+                errEl.textContent = msgs.join(' | ');
+            }
+        });
+});
+</script>
+{% endblock %}

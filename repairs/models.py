@@ -2,6 +2,28 @@ from django.db import models
 from django.utils import timezone
 
 
+class Technician(models.Model):
+    name = models.CharField(max_length=150, verbose_name='Nombre completo')
+    phone = models.CharField(max_length=20, blank=True, verbose_name='Teléfono')
+    email = models.EmailField(blank=True, verbose_name='Correo')
+    branch = models.ForeignKey(
+        'core.Branch', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='technicians', verbose_name='Sucursal'
+    )
+    specialization = models.CharField(max_length=150, blank=True, verbose_name='Especialización')
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Técnico'
+        verbose_name_plural = 'Técnicos'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class Repair(models.Model):
     STATUS_CHOICES = [
         ('pendiente', 'Pendiente'),
@@ -49,7 +71,7 @@ class Repair(models.Model):
         null=True, blank=True, related_name='repairs', verbose_name='Sucursal'
     )
     technician = models.ForeignKey(
-        'core.UserProfile', on_delete=models.SET_NULL,
+        'repairs.Technician', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='assigned_repairs', verbose_name='Técnico asignado'
     )
     received_by = models.ForeignKey(

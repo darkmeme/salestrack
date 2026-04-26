@@ -8,9 +8,10 @@ from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
 
+from core.decorators import branch_admin_required
 from core.models import UserProfile
-from .models import Repair
-from .forms import RepairForm, RepairStatusForm, RepairFilterForm
+from .models import Repair, Technician
+from .forms import RepairForm, RepairStatusForm, RepairFilterForm, TechnicianForm
 
 
 def _branch_filter(user):
@@ -44,7 +45,7 @@ def repair_dashboard(request):
     }
     recent = qs.order_by('-received_at')[:15]
 
-    tech_qs = UserProfile.objects.filter(is_active=True).exclude(role='superadmin')
+    tech_qs = Technician.objects.filter(is_active=True)
     if not user.is_superadmin and user.branch:
         tech_qs = tech_qs.filter(branch=user.branch)
 
@@ -287,3 +288,67 @@ def repair_charge(request, pk):
 
     except (InvalidOperation, Exception) as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+
+# ── Technician CRUD ────────────────────────────────────────────────────────────
+
+@branch_admin_required
+def technician_list(request):
+    user = request.user
+    qs = Technician.objects.select_related('branch')
+    if not user.is_superadmin and user.branch:
+        qs = qs.filter(branch=user.branch)
+    from core.models import Branch
+    branches = Branch.objects.filter(is_active=True) if user.is_superadmin else []
+    return render(request, 'repairs/technician_list.html', {'technicians': qs, 'branches': branches})
+
+
+@branch_admin_required
+def technician_create(request):
+    if request.method == 'POST':
+        form = TechnicianForm(request.POST)
+        if form.is_valid():
+            tech = form.save(commit=False)
+            if not request.user.is_superadmin and request.user.branch:
+                tech.branch = request.user.branch
+            tech.save()
+            return JsonResponse({'success': True, 'id': tech.pk, 'name': tech.name})
+        return JsonResponse({'success': False, 'errors': form.errors})
+    return JsonResponse({'success': False})
+
+
+@branch_admin_required
+def technician_update(request, pk):
+    tech = get_object_or_404(Technician, pk=pk)
+    if not request.user.is_superadmin and tech.branch != request.user.branch:
+        return JsonResponse({'success': False, 'message': 'Sin permisos.'}, status=403)
+    if request.method == 'POST':
+        form = TechnicianForm(request.POST, instance=tech)
+        if form.is_valid():
+            form.save()
+            return JsonResponse({'success': True})
+        return JsonResponse({'success': False, 'errors': form.errors})
+    # GET — return data for editing
+    data = {
+        'id': tech.pk,
+        'name': tech.name,
+        'phone': tech.phone,
+        'email': tech.email,
+        'branch': tech.branch_id,
+        'specialization': tech.specialization,
+        'notes': tech.notes,
+        'is_active': tech.is_active,
+    }
+    return JsonResponse({'success': True, 'data': data})
+
+
+@branch_admin_required
+def technician_toggle(request, pk):
+    tech = get_object_or_404(Technician, pk=pk)
+    if not request.user.is_superadmin and tech.branch != request.user.branch:
+        return JsonResponse({'success': False, 'message': 'Sin permisos.'}, status=403)
+    if request.method == 'POST':
+        tech.is_active = not tech.is_active
+        tech.save()
+        return JsonResponse({'success': True, 'is_active': tech.is_active})
+    return JsonResponse({'success': False})

@@ -92,11 +92,18 @@
                 </a>
             </li>
             {% endif %}
-            <li class="nav-item {% if request.resolver_match.namespace == 'repairs' %}active{% endif %}">
+            <li class="nav-item {% if request.resolver_match.namespace == 'repairs' and request.resolver_match.url_name != 'technician_list' %}active{% endif %}">
                 <a href="{% url 'repairs:dashboard' %}">
                     <i class="bi bi-tools"></i><span>Reparaciones</span>
                 </a>
             </li>
+            {% if not request.user.is_cashier %}
+            <li class="nav-item {% if request.resolver_match.url_name == 'technician_list' %}active{% endif %}">
+                <a href="{% url 'repairs:technician_list' %}">
+                    <i class="bi bi-person-badge"></i><span>Técnicos</span>
+                </a>
+            </li>
+            {% endif %}
             {% if request.user.is_superadmin %}
             <li class="nav-item {% if request.resolver_match.url_name == 'system_settings' %}active{% endif %}">
                 <a href="{% url 'core:system_settings' %}">

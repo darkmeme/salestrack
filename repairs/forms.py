@@ -1,6 +1,20 @@
 from django import forms
-from .models import Repair
-from core.models import UserProfile
+from .models import Repair, Technician
+
+
+class TechnicianForm(forms.ModelForm):
+    class Meta:
+        model = Technician
+        fields = ['name', 'phone', 'email', 'branch', 'specialization', 'notes', 'is_active']
+        widgets = {
+            'name':           forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre completo'}),
+            'phone':          forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 9999-9999'}),
+            'email':          forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'correo@ejemplo.com'}),
+            'branch':         forms.Select(attrs={'class': 'form-select'}),
+            'specialization': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Pantallas, baterías, placa...'}),
+            'notes':          forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'is_active':      forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
 
 class RepairForm(forms.ModelForm):
@@ -30,11 +44,10 @@ class RepairForm(forms.ModelForm):
 
     def __init__(self, *args, branch=None, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filter technicians to branch staff if branch provided
-        tech_qs = UserProfile.objects.filter(is_active=True).exclude(role='superadmin')
+        qs = Technician.objects.filter(is_active=True)
         if branch:
-            tech_qs = tech_qs.filter(branch=branch)
-        self.fields['technician'].queryset = tech_qs
+            qs = qs.filter(branch=branch)
+        self.fields['technician'].queryset = qs
         self.fields['technician'].empty_label = '— Sin asignar —'
 
 
@@ -76,7 +89,7 @@ class RepairFilterForm(forms.Form):
         widget=forms.DateInput(attrs={'class': 'form-control form-control-sm', 'type': 'date'})
     )
     technician = forms.ModelChoiceField(
-        queryset=UserProfile.objects.filter(is_active=True).exclude(role='superadmin'),
+        queryset=Technician.objects.filter(is_active=True),
         required=False,
         empty_label='Todos los técnicos',
         widget=forms.Select(attrs={'class': 'form-select form-select-sm'})
